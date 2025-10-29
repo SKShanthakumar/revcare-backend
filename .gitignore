@@ -1,3 +1,5 @@
 venv/
 misc/
 .env
+__pycache__
+test.py

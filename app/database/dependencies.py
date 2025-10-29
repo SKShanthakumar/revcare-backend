@@ -1,6 +1,6 @@
-from sql import SessionLocal
+from .postgresql import SessionLocal
 
-def get_sql_db():
+def get_postgres_db():
     """
     Dependency function for FastAPI endpoints to get database session
     """

@@ -1,1 +1,1 @@
-from sql import *
+from .postgresql import *

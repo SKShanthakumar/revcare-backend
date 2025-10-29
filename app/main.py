@@ -1,34 +1,33 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-import logging
-import traceback
+from app.routes import router
+from app.middlewares.error_handler import register_exception_handlers
+from app.utilities.seed import seed_database
+from contextlib import asynccontextmanager
 
-logger = logging.getLogger("uvicorn.error")
-
-app = FastAPI(title='RevCare API', version='1.0')
-
-@app.middleware("http")
-async def ErrorHandlerMiddleware(request: Request, call_next):
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Running startup tasks...")
     try:
-        return await call_next(request)
-    except HTTPException as e:
-        # Let known HTTP exceptions pass through unchanged
-        raise e
-
+        seed_database()
+        print("Startup seeding complete.")
     except Exception as e:
-        # Log detailed error info
-        error_info = {
-            "error_type": type(e).__name__,
-            "error_message": str(e),
-            "traceback": traceback.format_exc(),
-        }
+        print(f"Startup seeding failed: {e}")
 
-        logger.error(
-            f"Unhandled exception at {request.method} {request.url.path}: {e}\n{error_info['traceback']}"
-        )
+    yield
 
-        # Return a safe, generic error to the client
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "An unexpected error occurred. Please try again later."},
-        )
+    print("Server shutting down...")
+
+
+app = FastAPI(title='RevCare API', version='1.0', lifespan=lifespan)
+
+register_exception_handlers(app)
+
+app.include_router(router, prefix='/api/v1')
+
+@app.get("/")
+def welcome_message():
+    data = {
+        "message": "Welcome to revcare API"
+    }
+    return JSONResponse(content=data, status_code=200)
