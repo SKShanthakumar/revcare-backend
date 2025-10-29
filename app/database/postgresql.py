@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config import settings
+from app.core.config import settings
 
 engine = create_engine(settings.postgresql_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

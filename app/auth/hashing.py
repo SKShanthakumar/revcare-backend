@@ -11,4 +11,3 @@ def hash_password(password: str):
 '''Compares a plain password with a hashed password.Returns True if they match, False otherwise.'''
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
-

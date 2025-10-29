@@ -79,7 +79,7 @@ END $$;
 
 
 delete_users_trigger_script = """
--- Create a single trigger function for all three tables
+-- Create or replace the trigger function
 CREATE OR REPLACE FUNCTION delete_user_on_child_delete()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -88,23 +88,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Customers trigger
-CREATE TRIGGER trg_delete_user_from_customers
-AFTER DELETE ON customers
-FOR EACH ROW
-EXECUTE FUNCTION delete_user_on_child_delete();
+-- Conditionally create triggers only if they don't exist
+DO $$
+BEGIN
+    -- Customers trigger
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_delete_user_from_customers'
+    ) THEN
+        CREATE TRIGGER trg_delete_user_from_customers
+        AFTER DELETE ON customers
+        FOR EACH ROW
+        EXECUTE FUNCTION delete_user_on_child_delete();
+    END IF;
 
--- Admins trigger
-CREATE TRIGGER trg_delete_user_from_admins
-AFTER DELETE ON admins
-FOR EACH ROW
-EXECUTE FUNCTION delete_user_on_child_delete();
+    -- Admins trigger
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_delete_user_from_admins'
+    ) THEN
+        CREATE TRIGGER trg_delete_user_from_admins
+        AFTER DELETE ON admins
+        FOR EACH ROW
+        EXECUTE FUNCTION delete_user_on_child_delete();
+    END IF;
 
--- Mechanics trigger
-CREATE TRIGGER trg_delete_user_from_mechanics
-AFTER DELETE ON mechanics
-FOR EACH ROW
-EXECUTE FUNCTION delete_user_on_child_delete();
+    -- Mechanics trigger
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_delete_user_from_mechanics'
+    ) THEN
+        CREATE TRIGGER trg_delete_user_from_mechanics
+        AFTER DELETE ON mechanics
+        FOR EACH ROW
+        EXECUTE FUNCTION delete_user_on_child_delete();
+    END IF;
+END $$;
 """
 
 def init_custom_triggers(db):
@@ -112,7 +128,7 @@ def init_custom_triggers(db):
     try:
         db.execute(text(unique_id_trigger_script))
         db.commit()
-        print("Custom triggers verified/created successfully!")
+        print("Custom id generation triggers verified/created successfully!")
     except Exception as e:
         db.rollback()
         print(f"Skipping trigger setup: {e}")
@@ -122,7 +138,7 @@ def init_delete_triggers(db):
     try:
         db.execute(text(delete_users_trigger_script))
         db.commit()
-        print("Delete triggers verified/created successfully!")
+        print("Delete user triggers verified/created successfully!")
     except Exception as e:
         db.rollback()
         print(f"Skipping delete trigger setup: {e}")
