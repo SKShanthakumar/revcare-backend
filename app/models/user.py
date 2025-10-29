@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, VARCHAR, ForeignKey
+from sqlalchemy import Column, Integer, VARCHAR, ForeignKey, BIGINT
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -8,7 +8,7 @@ class User(Base):
     For common login search"""
     __tablename__ = "users"
     
-    phone = Column(VARCHAR, primary_key=True)
+    phone = Column(BIGINT, primary_key=True)
     password = Column(VARCHAR, nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     

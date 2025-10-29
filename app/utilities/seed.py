@@ -1,8 +1,9 @@
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
-from app.models import Role
-
+from app.models import Role, Permission
+from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
 
 unique_id_trigger_script = """
 -- ===========================
@@ -77,7 +78,6 @@ BEGIN
 END $$;
 """
 
-
 delete_users_trigger_script = """
 -- Create or replace the trigger function
 CREATE OR REPLACE FUNCTION delete_user_on_child_delete()
@@ -123,7 +123,7 @@ BEGIN
 END $$;
 """
 
-def init_custom_triggers(db):
+def init_custom_triggers(db: Session):
     """Create triggers and sequences"""
     try:
         db.execute(text(unique_id_trigger_script))
@@ -133,7 +133,7 @@ def init_custom_triggers(db):
         db.rollback()
         print(f"Skipping trigger setup: {e}")
 
-def init_delete_triggers(db):
+def init_delete_triggers(db: Session):
     """Create delete triggers"""
     try:
         db.execute(text(delete_users_trigger_script))
@@ -143,7 +143,7 @@ def init_delete_triggers(db):
         db.rollback()
         print(f"Skipping delete trigger setup: {e}")
 
-def seed_roles(db):
+def seed_rbac(db: Session):
     """Seed user roles (only if not already seeded)"""
     try:
         existing_roles = db.query(Role).count()
@@ -154,18 +154,55 @@ def seed_roles(db):
                 {"role_name": "customer"},
             ]
             db.bulk_insert_mappings(Role, roles_data)
-            db.commit()
             print("Roles seeded successfully!")
         else:
             print("Roles already exist, skipping seeding.")
+
+        # Refresh to get IDs after potential commit
+        roles = {r.role_name: r for r in db.query(Role).all()}
+
+        # Seed permissions (if not already)
+        existing_permissions = db.query(Permission).count()
+        if existing_permissions == 0:
+            permissions_data = get_all_scopes()
+            permissions = [Permission(permission=p) for p in permissions_data]
+            db.add_all(permissions)
+            db.commit()
+            print("Permissions seeded successfully!")
+
+        else:
+            print("Permissions already exist, skipping seeding.")
+
+        # Refresh permission objects
+        all_permissions = {p.permission: p for p in db.query(Permission).all()}
+        # Group permissions by role
+        admin_perm_names = get_admin_scopes()
+        mechanic_perm_names = get_mechanic_scopes()
+        customer_perm_names = get_customer_scopes()
+
+        admin_permissions = [all_permissions[name] for name in admin_perm_names]
+        mechanic_permissions = [all_permissions[name] for name in mechanic_perm_names]
+        customer_permissions = [all_permissions[name] for name in customer_perm_names]
+        
+        # optionally clear existing relationships
+        for role in roles.values():
+            role.permissions.clear()
+            
+        roles["admin"].permissions = admin_permissions
+        roles["mechanic"].permissions = mechanic_permissions
+        roles["customer"].permissions = customer_permissions
+
+        db.commit()
+        print("Role-permission relationships seeded successfully!")
+
     except Exception as e:
         db.rollback()
-        print(f"Error seeding roles: {e}")
+        print(f"Error seeding RBAC data: {e}")
 
 
 def seed_database():
     """Initialize database with triggers and base data"""
-    # Create all tables (no drop!)
+    # Create all tables
     Base.metadata.create_all(bind=engine)
 
     # Manually obtain DB session
@@ -174,6 +211,6 @@ def seed_database():
     try:
         init_custom_triggers(db)
         init_delete_triggers(db)
-        seed_roles(db)
+        seed_rbac(db)
     finally:
         db.close()

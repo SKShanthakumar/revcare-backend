@@ -31,3 +31,17 @@ def welcome_message():
         "message": "Welcome to revcare API"
     }
     return JSONResponse(content=data, status_code=200)
+
+# testing purpose only
+from app.database.dependencies import get_postgres_db
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from app.models import User, Customer, Mechanic, Admin, Role, Permission
+
+@app.get("/test")
+def test(db: Session = Depends(get_postgres_db)):
+    role = 1
+    token_scopes = db.query(Role).filter(Role.id == role).first().permissions
+    token_scopes = [p.permission for p in token_scopes]
+
+    return {"scopes": token_scopes}

@@ -8,6 +8,7 @@ class RefreshToken(Base):
     
     jti = Column(VARCHAR, primary_key=True)
     token = Column(VARCHAR, nullable=False)
+    user_id = Column(VARCHAR, nullable=False, index=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     expires_at = Column(TIMESTAMP, nullable=False)
     

@@ -27,7 +27,7 @@ def update_user(db: Session, user_id: str, user_data: CustomerUpdate | AdminUpda
     return user
 
 def create_user(db: Session, user: CustomerCreate | AdminCreate | MechanicCreate, model: Customer | Admin | Mechanic):
-    phone = str(user.phone)
+    phone = user.phone
     hashed_password = hashing.hash_password(user.password)
     model_name = model.__name__.lower()
 
@@ -52,7 +52,8 @@ def create_user(db: Session, user: CustomerCreate | AdminCreate | MechanicCreate
                 phone=phone,
                 dob=user.dob,
                 pickup_drop=user.pickup_drop,
-                analysis=user.analysis
+                analysis=user.analysis,
+                role_id=user_role.id
             )
         else:
             existing = db.query(model).filter(model.email == user.email).first()
@@ -60,7 +61,7 @@ def create_user(db: Session, user: CustomerCreate | AdminCreate | MechanicCreate
                 raise HTTPException(status_code=400, detail="User with this email already exists.")
             
             # create user
-            db_user = model(name=user.name, phone=user.phone, email=user.email)
+            db_user = model(name=user.name, phone=user.phone, email=user.email, role_id=user_role.id)
         db.add(db_user)    
         db.commit()
         db.refresh(db_user)
