@@ -77,6 +77,36 @@ BEGIN
 END $$;
 """
 
+
+delete_users_trigger_script = """
+-- Create a single trigger function for all three tables
+CREATE OR REPLACE FUNCTION delete_user_on_child_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM users WHERE phone = OLD.phone;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Customers trigger
+CREATE TRIGGER trg_delete_user_from_customers
+AFTER DELETE ON customers
+FOR EACH ROW
+EXECUTE FUNCTION delete_user_on_child_delete();
+
+-- Admins trigger
+CREATE TRIGGER trg_delete_user_from_admins
+AFTER DELETE ON admins
+FOR EACH ROW
+EXECUTE FUNCTION delete_user_on_child_delete();
+
+-- Mechanics trigger
+CREATE TRIGGER trg_delete_user_from_mechanics
+AFTER DELETE ON mechanics
+FOR EACH ROW
+EXECUTE FUNCTION delete_user_on_child_delete();
+"""
+
 def init_custom_triggers(db):
     """Create triggers and sequences"""
     try:
@@ -87,6 +117,15 @@ def init_custom_triggers(db):
         db.rollback()
         print(f"Skipping trigger setup: {e}")
 
+def init_delete_triggers(db):
+    """Create delete triggers"""
+    try:
+        db.execute(text(delete_users_trigger_script))
+        db.commit()
+        print("Delete triggers verified/created successfully!")
+    except Exception as e:
+        db.rollback()
+        print(f"Skipping delete trigger setup: {e}")
 
 def seed_roles(db):
     """Seed user roles (only if not already seeded)"""
@@ -118,6 +157,7 @@ def seed_database():
 
     try:
         init_custom_triggers(db)
+        init_delete_triggers(db)
         seed_roles(db)
     finally:
         db.close()

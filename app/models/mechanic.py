@@ -8,7 +8,7 @@ class Mechanic(Base):
     
     id = Column(VARCHAR, primary_key=True, server_default=FetchedValue())
     name = Column(VARCHAR, nullable=False)
-    phone = Column(VARCHAR, ForeignKey('users.phone'), unique=True, nullable=False, index=True)
+    phone = Column(VARCHAR, ForeignKey('users.phone', ondelete='CASCADE', onupdate='CASCADE'), unique=True, nullable=False, index=True)
     dob = Column(Date, nullable=False)
     pickup_drop = Column(Boolean, default=False)
     analysis = Column(Boolean, default=False)

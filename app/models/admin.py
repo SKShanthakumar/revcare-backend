@@ -8,7 +8,7 @@ class Admin(Base):
     
     id = Column(VARCHAR, primary_key=True, server_default=FetchedValue())
     name = Column(VARCHAR, nullable=False)
-    phone = Column(VARCHAR, ForeignKey('users.phone'), unique=True, nullable=False, index=True)
+    phone = Column(VARCHAR, ForeignKey('users.phone', ondelete='CASCADE', onupdate='CASCADE'), unique=True, nullable=False, index=True)
     email = Column(VARCHAR, unique=True, nullable=False)
     profile_img = Column(VARCHAR)
     created_at = Column(TIMESTAMP, server_default=func.now())

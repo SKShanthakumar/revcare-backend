@@ -5,7 +5,7 @@ from typing import List
 from app.database.dependencies import get_postgres_db
 from app.models import Customer
 from app.schemas import CustomerCreate, CustomerResponse, CustomerUpdate
-from app.controllers import user
+from app.services import user
 
 router = APIRouter()
 
