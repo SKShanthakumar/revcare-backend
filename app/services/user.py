@@ -4,16 +4,16 @@ from app.auth import hashing
 from app.models import Customer, User, Role, Admin, Mechanic
 from app.schemas import CustomerCreate, CustomerUpdate, AdminUpdate, AdminCreate, MechanicCreate, MechanicUpdate
 
-def get_all_users(db: Session, model: Customer | Admin | Mechanic):
-    return db.query(model).all()
+async def get_all_users(db: Session, model: Customer | Admin | Mechanic):
+    return await db.query(model).all()
 
-def get_user_by_id(db: Session, user_id: str, model: Customer | Admin | Mechanic):
-    user = db.query(model).filter(model.id == user_id).first()
+async def get_user_by_id(db: Session, user_id: str, model: Customer | Admin | Mechanic):
+    user = await db.query(model).filter(model.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
     return user
 
-def update_user(db: Session, user_id: str, user_data: CustomerUpdate | AdminUpdate | MechanicUpdate, model: Customer | Admin | Mechanic):
+async def update_user(db: Session, user_id: str, user_data: CustomerUpdate | AdminUpdate | MechanicUpdate, model: Customer | Admin | Mechanic):
     user = db.query(model).filter(model.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
@@ -26,7 +26,7 @@ def update_user(db: Session, user_id: str, user_data: CustomerUpdate | AdminUpda
     db.refresh(user)
     return user
 
-def create_user(db: Session, user: CustomerCreate | AdminCreate | MechanicCreate, model: Customer | Admin | Mechanic):
+async def create_user(db: Session, user: CustomerCreate | AdminCreate | MechanicCreate, model: Customer | Admin | Mechanic):
     phone = user.phone
     hashed_password = hashing.hash_password(user.password)
     model_name = model.__name__.lower()

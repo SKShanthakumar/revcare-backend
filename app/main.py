@@ -2,14 +2,14 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from app.routes import router
 from app.middlewares.error_handler import register_exception_handlers
-from app.utilities.seed import seed_database
+from app.utilities.seed import run_seed
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Running startup tasks...")
     try:
-        seed_database()
+        await run_seed()
         print("Startup seeding complete.")
     except Exception as e:
         print(f"Startup seeding failed: {e}")
@@ -26,7 +26,7 @@ register_exception_handlers(app)
 app.include_router(router, prefix='/api/v1')
 
 @app.get("/")
-def welcome_message():
+async def welcome_message():
     data = {
         "message": "Welcome to revcare API"
     }
@@ -39,7 +39,7 @@ from fastapi import Depends
 from app.models import User, Customer, Mechanic, Admin, Role, Permission
 
 @app.get("/test")
-def test(db: Session = Depends(get_postgres_db)):
+async def test(db: Session = Depends(get_postgres_db)):
     role = 1
     token_scopes = db.query(Role).filter(Role.id == role).first().permissions
     token_scopes = [p.permission for p in token_scopes]

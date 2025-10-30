@@ -28,7 +28,7 @@ class AdminResponse(AdminBase):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AdminUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Security
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, Security, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.database.dependencies import get_postgres_db
@@ -12,7 +12,8 @@ router = APIRouter()
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
 @router.post("/login")
-def login(credentials: Login, response: Response, db: Session = Depends(get_postgres_db)):
+def login(response: Response, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_postgres_db)):
+    credentials = Login(phone=username, password=password)
     refresh_token, access_token = auth.login_user(credentials, db)
 
     response.set_cookie(
@@ -42,18 +43,3 @@ def logout(response: Response, payload = Security(validate_token, scopes=[]), db
     response.delete_cookie(key="refresh_token")
 
     return JSONResponse(content={"message": "Successfully logged out"})
-
-# test rbac
-@router.post("/test")
-def test(payload = Security(validate_token, scopes=["READ:RBAC"])):
-    # Optionally: blacklist the access token’s JTI here if you have token blacklisting
-    # Example: await blacklist_token(token)
-    return {"type": str(type(payload)), "payload": payload}
-
-# to bypass cookie testing - temperory only
-@router.post("/refresh_query")
-def refresh_token(refresh_token: str, response: Response, db: Session = Depends(get_postgres_db)):
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="Refresh token missing")
-
-    return auth.get_access_token_using_refresh_token(refresh_token, db)

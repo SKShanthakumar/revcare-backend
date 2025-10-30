@@ -27,7 +27,7 @@ def register_exception_handlers(app: FastAPI):
             if "duplicate key value violates unique constraint" in str(exc.orig):
                 msg = "Record already exists with the same unique field."
 
-            raise HTTPException(status_code=400, detail=msg)
+            return JSONResponse(status_code=400, content={"detail": msg})
 
         except Exception as exc:
             logger.error(f"Unhandled error: {exc}")
