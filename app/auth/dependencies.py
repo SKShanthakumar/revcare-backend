@@ -29,6 +29,21 @@ def validate_token(security_scopes: SecurityScopes, token: str = Depends(oauth2_
     jti = payload.get("jti")
     if is_token_blacklisted(jti, db):
         raise HTTPException(status_code=403, detail="Token has been revoked.")
+    
+    user_id = payload.get("sub")
+    user_type = user_id[:3]
+    if user_type == 'CST':
+        from app.models import Customer
+        user = db.query(Customer).filter(Customer.id == user_id).first()
+    elif user_type == 'MEC':
+        from app.models import Mechanic
+        user = db.query(Mechanic).filter(Mechanic.id == user_id).first()
+    else:
+        from app.models import Admin
+        user = db.query(Admin).filter(Admin.id == user_id).first()
+    
+    if not user:
+        raise credentials_exception
 
     role = payload.get("role")
     token_scopes = db.query(Role).filter(Role.id == role).first().permissions
@@ -38,4 +53,12 @@ def validate_token(security_scopes: SecurityScopes, token: str = Depends(oauth2_
         if scope not in token_scopes:
             raise credentials_exception
         
-    return payload
+    response = {
+        "user_id": user_id,
+        "role": role,
+        "user_data": user,
+        "jti": jti,
+        "exp": payload.get("exp") 
+    }
+        
+    return response
