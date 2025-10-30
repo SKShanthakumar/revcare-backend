@@ -11,7 +11,7 @@ router = APIRouter()
 
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
-@router.post("/login", response_class=JSONResponse)
+@router.post("/login")
 def login(credentials: Login, response: Response, db: Session = Depends(get_postgres_db)):
     refresh_token, access_token = auth.login_user(credentials, db)
 
@@ -24,7 +24,7 @@ def login(credentials: Login, response: Response, db: Session = Depends(get_post
         max_age=REFRESH_TOKEN_EXPIRE_DAYS*24*60*60
     )
 
-    return JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/refresh")
 def refresh_token(request: Request, response: Response, db: Session = Depends(get_postgres_db)):
@@ -43,12 +43,14 @@ def logout(response: Response, payload = Security(validate_token, scopes=[]), db
 
     return JSONResponse(content={"message": "Successfully logged out"})
 
+# test rbac
 @router.post("/test")
-def logout(response: Response, payload = Security(validate_token, scopes=["WRITE:RBAC"]), db: Session = Depends(get_postgres_db)):
+def test(payload = Security(validate_token, scopes=["READ:RBAC"])):
     # Optionally: blacklist the access token’s JTI here if you have token blacklisting
     # Example: await blacklist_token(token)
     return {"type": str(type(payload)), "payload": payload}
 
+# to bypass cookie testing - temperory only
 @router.post("/refresh_query")
 def refresh_token(refresh_token: str, response: Response, db: Session = Depends(get_postgres_db)):
     if not refresh_token:
