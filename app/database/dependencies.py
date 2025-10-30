@@ -1,12 +1,11 @@
 from .postgresql import SessionLocal
 
-def get_postgres_db():
+async def get_postgres_db():
     """
-    Dependency function for FastAPI endpoints to get database session
+    Async dependency for FastAPI routes to get DB session
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+    async with SessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()

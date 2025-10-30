@@ -1,5 +1,6 @@
+import asyncio
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
 from app.models import Role, Permission
@@ -123,58 +124,65 @@ BEGIN
 END $$;
 """
 
-def init_custom_triggers(db: Session):
+async def init_custom_triggers(db: Session):
     """Create triggers and sequences"""
     try:
-        db.execute(text(unique_id_trigger_script))
-        db.commit()
+        for statement in unique_id_trigger_script.strip().split(";"):
+            stmt = statement.strip()
+            if stmt:
+                await db.execute(text(stmt))
+        await db.commit()
         print("Custom id generation triggers verified/created successfully!")
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         print(f"Skipping trigger setup: {e}")
 
-def init_delete_triggers(db: Session):
+async def init_delete_triggers(db: Session):
     """Create delete triggers"""
     try:
-        db.execute(text(delete_users_trigger_script))
-        db.commit()
+        for statement in delete_users_trigger_script.strip().split(";"):
+            stmt = statement.strip()
+            if stmt:
+                await db.execute(text(stmt))
+        await db.commit()
         print("Delete user triggers verified/created successfully!")
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         print(f"Skipping delete trigger setup: {e}")
 
-def seed_rbac(db: Session):
+async def seed_rbac(db: Session):
     """Seed user roles (only if not already seeded)"""
     try:
-        existing_roles = db.query(Role).count()
+        result = await db.execute(select(func.count()).select_from(Role))
+        existing_roles = result.scalar()
         if existing_roles == 0:
             roles_data = [
                 {"role_name": "admin"},
                 {"role_name": "mechanic"},
                 {"role_name": "customer"},
             ]
-            db.bulk_insert_mappings(Role, roles_data)
+            await db.bulk_insert_mappings(Role, roles_data)
             print("Roles seeded successfully!")
         else:
             print("Roles already exist, skipping seeding.")
 
         # Refresh to get IDs after potential commit
-        roles = {r.role_name: r for r in db.query(Role).all()}
+        roles = {r.role_name: r for r in await db.query(Role).all()}
 
         # Seed permissions (if not already)
-        existing_permissions = db.query(Permission).count()
+        existing_permissions = await db.query(Permission).count()
         if existing_permissions == 0:
             permissions_data = get_all_scopes()
             permissions = [Permission(permission=p) for p in permissions_data]
-            db.add_all(permissions)
-            db.commit()
+            await db.add_all(permissions)
+            await db.commit()
             print("Permissions seeded successfully!")
 
         else:
             print("Permissions already exist, skipping seeding.")
 
         # Refresh permission objects
-        all_permissions = {p.permission: p for p in db.query(Permission).all()}
+        all_permissions = {p.permission: p for p in await db.query(Permission).all()}
         # Group permissions by role
         admin_perm_names = get_admin_scopes()
         mechanic_perm_names = get_mechanic_scopes()
@@ -192,25 +200,22 @@ def seed_rbac(db: Session):
         roles["mechanic"].permissions = mechanic_permissions
         roles["customer"].permissions = customer_permissions
 
-        db.commit()
+        await db.commit()
         print("Role-permission relationships seeded successfully!")
 
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         print(f"Error seeding RBAC data: {e}")
 
 
-def seed_database():
-    """Initialize database with triggers and base data"""
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
+async def run_seed():
+    """Run all startup DB seeding logic"""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    # Manually obtain DB session
-    db = next(get_postgres_db())
-
-    try:
-        init_custom_triggers(db)
-        init_delete_triggers(db)
-        seed_rbac(db)
-    finally:
-        db.close()
+    async for db in get_postgres_db():
+        try:
+            await init_custom_triggers(db)
+            await seed_rbac(db)
+        finally:
+            await db.close()

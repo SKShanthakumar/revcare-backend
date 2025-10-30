@@ -46,7 +46,7 @@ class MechanicResponse(MechanicBase):
     assigned: Optional[bool] = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MechanicUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1)

@@ -28,7 +28,7 @@ class CustomerResponse(CustomerBase):
     id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CustomerUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1)
