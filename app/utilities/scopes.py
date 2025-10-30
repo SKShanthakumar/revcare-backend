@@ -25,8 +25,8 @@ scopes = {
     # Customer management
     "READ:CUSTOMERS": [1, 2, 3],
     "WRITE:CUSTOMERS": [1],
-    "DELETE:CUSTOMERS": [1],
-    "UPDATE:CUSTOMERS": [1, 2],
+    "DELETE:CUSTOMERS": [1, 3],
+    "UPDATE:CUSTOMERS": [1, 3],
 
     # Refresh tokens (admin can do all, mechanic/customer can read/update only)
     "READ:REFRESH_TOKENS": [1, 2, 3],

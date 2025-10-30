@@ -1,5 +1,6 @@
 import asyncio
-from sqlalchemy import text
+from sqlalchemy import text, select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
@@ -127,10 +128,7 @@ END $$;
 async def init_custom_triggers(db: Session):
     """Create triggers and sequences"""
     try:
-        for statement in unique_id_trigger_script.strip().split(";"):
-            stmt = statement.strip()
-            if stmt:
-                await db.execute(text(stmt))
+        await db.execute(text(unique_id_trigger_script))
         await db.commit()
         print("Custom id generation triggers verified/created successfully!")
     except Exception as e:
@@ -140,10 +138,7 @@ async def init_custom_triggers(db: Session):
 async def init_delete_triggers(db: Session):
     """Create delete triggers"""
     try:
-        for statement in delete_users_trigger_script.strip().split(";"):
-            stmt = statement.strip()
-            if stmt:
-                await db.execute(text(stmt))
+        await db.execute(text(delete_users_trigger_script))
         await db.commit()
         print("Delete user triggers verified/created successfully!")
     except Exception as e:
@@ -156,25 +151,27 @@ async def seed_rbac(db: Session):
         result = await db.execute(select(func.count()).select_from(Role))
         existing_roles = result.scalar()
         if existing_roles == 0:
-            roles_data = [
-                {"role_name": "admin"},
-                {"role_name": "mechanic"},
-                {"role_name": "customer"},
-            ]
-            await db.bulk_insert_mappings(Role, roles_data)
+            db.add_all([
+                Role(role_name="admin"),
+                Role(role_name="mechanic"),
+                Role(role_name="customer"),
+            ])
+            await db.commit()
             print("Roles seeded successfully!")
         else:
             print("Roles already exist, skipping seeding.")
 
         # Refresh to get IDs after potential commit
-        roles = {r.role_name: r for r in await db.query(Role).all()}
+        result = await db.execute(select(Role).options(selectinload(Role.permissions)))
+        roles = {r.role_name: r for r in result.scalars().all()}
 
         # Seed permissions (if not already)
-        existing_permissions = await db.query(Permission).count()
+        result = await db.execute(select(func.count()).select_from(Permission))
+        existing_permissions = result.scalar_one()
         if existing_permissions == 0:
             permissions_data = get_all_scopes()
             permissions = [Permission(permission=p) for p in permissions_data]
-            await db.add_all(permissions)
+            db.add_all(permissions)
             await db.commit()
             print("Permissions seeded successfully!")
 
@@ -182,7 +179,8 @@ async def seed_rbac(db: Session):
             print("Permissions already exist, skipping seeding.")
 
         # Refresh permission objects
-        all_permissions = {p.permission: p for p in await db.query(Permission).all()}
+        result = await db.execute(select(Permission))
+        all_permissions = {p.permission: p for p in result.scalars().all()}
         # Group permissions by role
         admin_perm_names = get_admin_scopes()
         mechanic_perm_names = get_mechanic_scopes()
@@ -216,6 +214,7 @@ async def run_seed():
     async for db in get_postgres_db():
         try:
             await init_custom_triggers(db)
+            await init_delete_triggers(db)
             await seed_rbac(db)
         finally:
             await db.close()

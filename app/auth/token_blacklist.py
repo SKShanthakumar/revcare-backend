@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.models import RevokedToken
 from datetime import datetime
 
@@ -15,7 +16,7 @@ def add_to_blacklist(jti: str, expires_at: datetime, db: Session):
     db.add(revoked)
     db.commit()
 
-def is_token_blacklisted(jti: str, db: Session) -> bool:
+async def is_token_blacklisted(jti: str, db: Session) -> bool:
     '''
     1.Query RevokedToken table for the given jti.
     2.If a record exists:
@@ -24,7 +25,8 @@ def is_token_blacklisted(jti: str, db: Session) -> bool:
             No → return True (token is blacklisted).
     3. If no record → token is not blacklisted, return False.
     '''
-    token = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+    result = await db.execute(select(RevokedToken).where(RevokedToken.jti == jti))
+    token = result.scalar_one_or_none()
     if token:
         # Optionally: remove expired tokens
         if token.expires_at < datetime.utcnow():
