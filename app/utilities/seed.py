@@ -1,11 +1,14 @@
-import asyncio
-from sqlalchemy import text, select, func
+from datetime import date
+from sqlalchemy import text, select, func, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
-from app.models import Role, Permission
+from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car
 from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
+from app.auth import hashing
+from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
+from app.services.user import create_user
 
 unique_id_trigger_script = """
 -- ===========================
@@ -166,11 +169,16 @@ async def seed_rbac(db: Session):
         roles = {r.role_name: r for r in result.scalars().all()}
 
         # Seed permissions (if not already)
-        result = await db.execute(select(func.count()).select_from(Permission))
-        existing_permissions = result.scalar_one()
-        if existing_permissions == 0:
-            permissions_data = get_all_scopes()
-            permissions = [Permission(permission=p) for p in permissions_data]
+        result = await db.execute(select(Permission))
+        existing_permissions = {row.permission for row in result.scalars().all()}
+
+        permissions_data = set(get_all_scopes())
+
+        # Find permissions that are not yet in the database
+        new_permissions = permissions_data - existing_permissions
+
+        if new_permissions:
+            permissions = [Permission(permission=p) for p in new_permissions]
             db.add_all(permissions)
             await db.commit()
             print("Permissions seeded successfully!")
@@ -205,6 +213,215 @@ async def seed_rbac(db: Session):
         await db.rollback()
         print(f"Error seeding RBAC data: {e}")
 
+async def seed_users(db: Session):
+    try:
+        result = await db.execute(select(func.count()).select_from(User))
+        user_count = result.scalar()
+        if user_count == 0:
+            admin = AdminCreate(
+                name="Admin01",
+                phone=9841385379,
+                email="admin01@gmail.com",
+                password="Sk18102004."
+            )
+
+            customer1 = CustomerCreate(
+                name="Surya",
+                phone=7904593204,
+                email="surya@gmail.com",
+                password="Sk18102004."
+            )
+
+            customer2 = CustomerCreate(
+                name="Rahul",
+                phone=7904593205,
+                email="rahul@gmail.com",
+                password="Sk18102004."
+            )
+
+            mechanic = MechanicCreate(
+                name="Arunachalam",
+                phone="6374159500",
+                dob=date(year=2000, month=12, day=12),
+                pickup_drop=False,
+                analysis=True,
+                password='Sk18102004.'
+            )
+
+            await create_user(db, admin, Admin)
+            await create_user(db, customer1, Customer)
+            await create_user(db, customer2, Customer)
+            await create_user(db, mechanic, Mechanic)
+
+            print("Users seeded successfully!")
+
+    except Exception as e:
+        print(f"Error seeding User data: {e}")
+
+async def seed_car_utils(db: Session):
+    """Seed car-related utility tables (fuel types, manufacturers, car classes, and sample cars)"""
+    try:
+        # Seed Fuel Types
+        result = await db.execute(select(func.count()).select_from(FuelType))
+        fuel_count = result.scalar()
+        if fuel_count == 0:
+            fuel_types = [
+                FuelType(fuel_name="Petrol"),
+                FuelType(fuel_name="Diesel"),
+                FuelType(fuel_name="Electric"),
+                FuelType(fuel_name="Hybrid"),
+                FuelType(fuel_name="CNG"),
+            ]
+            db.add_all(fuel_types)
+            await db.commit()
+            print("Fuel types seeded successfully!")
+        else:
+            print("Fuel types already exist, skipping seeding.")
+
+        # Seed Manufacturers
+        result = await db.execute(select(func.count()).select_from(Manufacturer))
+        manufacturer_count = result.scalar()
+        if manufacturer_count == 0:
+            manufacturers = [
+                Manufacturer(name="Maruti Suzuki"),
+                Manufacturer(name="Hyundai"),
+                Manufacturer(name="Tata"),
+                Manufacturer(name="Mahindra"),
+                Manufacturer(name="Honda"),
+                Manufacturer(name="Toyota"),
+                Manufacturer(name="Kia"),
+                Manufacturer(name="MG"),
+                Manufacturer(name="Volkswagen"),
+                Manufacturer(name="Skoda"),
+                Manufacturer(name="Renault"),
+                Manufacturer(name="Nissan"),
+                Manufacturer(name="Ford"),
+                Manufacturer(name="Jeep"),
+                Manufacturer(name="Mercedes-Benz"),
+                Manufacturer(name="BMW"),
+                Manufacturer(name="Audi"),
+                Manufacturer(name="Volvo"),
+                Manufacturer(name="Lexus"),
+                Manufacturer(name="Porsche"),
+                Manufacturer(name="Jaguar"),
+                Manufacturer(name="Land Rover"),
+                Manufacturer(name="BYD"),
+                Manufacturer(name="Citroën"),
+                Manufacturer(name="Isuzu"),
+                Manufacturer(name="Fiat"),
+            ]
+            db.add_all(manufacturers)
+            await db.commit()
+            print("Manufacturers seeded successfully!")
+        else:
+            print("Manufacturers already exist, skipping seeding.")
+
+        # Seed Car Classes
+        result = await db.execute(select(func.count()).select_from(CarClass))
+        class_count = result.scalar()
+        if class_count == 0:
+            car_classes = [
+                CarClass(class_="Basic Hatchback"),
+                CarClass(class_="Premium Hatchback"),
+                CarClass(class_="Luxury Hatchback"),
+
+                CarClass(class_="Basic Sedan"),
+                CarClass(class_="Premium Sedan"),
+                CarClass(class_="Luxury Sedan"),
+
+                CarClass(class_="Basic SUV"),
+                CarClass(class_="Premium SUV"),
+                CarClass(class_="Luxury SUV"),
+
+                CarClass(class_="Basic MPV"),
+                CarClass(class_="Premium MPV"),
+                CarClass(class_="Luxury MPV"),
+
+                CarClass(class_="Premium Coupe"),
+                CarClass(class_="Luxury Coupe"),
+
+                CarClass(class_="Premium Convertible"),
+                CarClass(class_="Luxury Convertible"),
+
+                CarClass(class_="Basic Crossover"),
+                CarClass(class_="Premium Crossover"),
+                CarClass(class_="Luxury Crossover"),
+
+                CarClass(class_="Basic Pickup Truck"),
+                CarClass(class_="Premium Pickup Truck"),
+            ]
+            db.add_all(car_classes)
+            await db.commit()
+            print("Car classes seeded successfully!")
+        else:
+            print("Car classes already exist, skipping seeding.")
+
+        # Refresh to get IDs after commits
+        result = await db.execute(select(FuelType))
+        fuel_types_dict = {ft.fuel_name: ft for ft in result.scalars().all()}
+        
+        result = await db.execute(select(Manufacturer))
+        manufacturers_dict = {m.name: m for m in result.scalars().all()}
+        
+        result = await db.execute(select(CarClass))
+        car_classes_dict = {cc.class_: cc for cc in result.scalars().all()}
+
+        # Seed Sample Cars
+        result = await db.execute(select(func.count()).select_from(Car))
+        car_count = result.scalar()
+        if car_count == 0:
+            cars = [
+                Car(
+                    model="Swift",
+                    manufacturer_id=manufacturers_dict["Maruti Suzuki"].id,
+                    fuel_type_id=fuel_types_dict["Petrol"].id,
+                    car_class_id=car_classes_dict["Basic Hatchback"].id,
+                    year=2024,
+                    img="swift.jpg"
+                ),
+                Car(
+                    model="Creta",
+                    manufacturer_id=manufacturers_dict["Hyundai"].id,
+                    fuel_type_id=fuel_types_dict["Diesel"].id,
+                    car_class_id=car_classes_dict["Premium SUV"].id,
+                    year=2024,
+                    img="creta.jpg"
+                ),
+                Car(
+                    model="Nexon EV",
+                    manufacturer_id=manufacturers_dict["Tata"].id,
+                    fuel_type_id=fuel_types_dict["Electric"].id,
+                    car_class_id=car_classes_dict["Premium SUV"].id,
+                    year=2023,
+                    img="nexon_ev.jpg"
+                ),
+                Car(
+                    model="Fortuner",
+                    manufacturer_id=manufacturers_dict["Toyota"].id,
+                    fuel_type_id=fuel_types_dict["Diesel"].id,
+                    car_class_id=car_classes_dict["Premium SUV"].id,
+                    year=2024,
+                    img="fortuner.jpg"
+                ),
+                Car(
+                    model="City",
+                    manufacturer_id=manufacturers_dict["Honda"].id,
+                    fuel_type_id=fuel_types_dict["Petrol"].id,
+                    car_class_id=car_classes_dict["Premium Sedan"].id,
+                    year=2024,
+                    img="city.jpg"
+                ),
+            ]
+            db.add_all(cars)
+            await db.commit()
+            print("Sample cars seeded successfully!")
+        else:
+            print("Cars already exist, skipping seeding.")
+
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding Car utils data: {e}")
+
 
 async def run_seed():
     """Run all startup DB seeding logic"""
@@ -216,5 +433,8 @@ async def run_seed():
             await init_custom_triggers(db)
             await init_delete_triggers(db)
             await seed_rbac(db)
+            await seed_users(db)
+            await seed_car_utils(db)
+
         finally:
             await db.close()
