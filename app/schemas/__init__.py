@@ -2,3 +2,8 @@ from .customer import *
 from .admin import *
 from .mechanic import *
 from .auth import *
+from .car import *
+from .car_class import *
+from .customer_car import *
+from .manufacturer import *
+from .fuel_type import *

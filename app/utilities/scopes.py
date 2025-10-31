@@ -33,6 +33,23 @@ scopes = {
     "WRITE:REFRESH_TOKENS": [1],
     "DELETE:REFRESH_TOKENS": [1],
     "UPDATE:REFRESH_TOKENS": [1, 2, 3],
+
+    # for all utility tables
+    "READ:UTILS": [1, 2, 3],
+    "WRITE:UTILS": [1],
+    "DELETE:UTILS": [1],
+    "UPDATE:UTILS": [1],
+
+    "READ:CARS": [1, 2, 3],
+    "WRITE:CARS": [1],
+    "DELETE:CARS": [1],
+    "UPDATE:CARS": [1],
+
+    "READ:CUSTOMER_CARS": [1, 2, 3],
+    "WRITE:CUSTOMER_CARS": [1, 3],
+    "DELETE:CUSTOMER_CARS": [1, 3],
+    "UPDATE:CUSTOMER_CARS": [1, 3],
+
 }
 
 def get_all_scopes():
