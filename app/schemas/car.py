@@ -55,3 +55,45 @@ class CarResponse(CarBase):
 
     class Config:
         from_attributes = True
+
+
+class CarUpdate(BaseModel):
+    """Base schema for Car"""
+    model: Optional[str] = Field(None, min_length=1, max_length=100, description="Car model name")
+    manufacturer_id: Optional[int] = Field(None, gt=0, description="ID of the manufacturer")
+    fuel_type_id: Optional[int] = Field(None, gt=0, description="ID of the fuel type")
+    car_class_id: Optional[int] = Field(None, gt=0, description="ID of the car class")
+    year: Optional[int] = Field(None, ge=1900, le=2100, description="Manufacturing year")
+    img: Optional[str] = Field(None, min_length=1, max_length=255, description="Image path or URL")
+
+    @field_validator('model')
+    def validate_model(cls, v: str) -> str:
+        """Validate and normalize car model name"""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Car model cannot be empty or only whitespace")
+        return v
+
+    @field_validator('img')
+    def validate_img(cls, v: str) -> str:
+        """Validate image path"""
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Image path cannot be empty or only whitespace")
+        return v
+
+    @field_validator('year')
+    def validate_year(cls, v: int) -> int:
+        """Validate manufacturing year"""
+        if v is None:
+            return v
+        current_year = datetime.now().year
+        if v > current_year + 1:
+            raise ValueError(f"Manufacturing year cannot be more than {current_year + 1}")
+        if v < 1900:
+            raise ValueError("Manufacturing year must be 1900 or later")
+        return v

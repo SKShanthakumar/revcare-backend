@@ -54,3 +54,19 @@ class MechanicUpdate(BaseModel):
     pickup_drop: Optional[bool] = None
     analysis: Optional[bool] = None
     dob: Optional[date] = None
+
+    @field_validator("dob")
+    def validate_dob(cls, value: date) -> date:
+        if value is None:
+            return value
+        today = date.today()
+        age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+        
+        if value > today:
+            raise ValueError("Date of birth cannot be in the future.")
+        if age < 18:
+            raise ValueError("Mechanic must be at least 18 years old.")
+        if age > 60:
+            raise ValueError("Age cannot exceed 60 years.")
+        
+        return value

@@ -15,9 +15,9 @@ class Car(Base):
     img = Column(VARCHAR, nullable=False)
     
     # Relationships
-    manufacturer = relationship("Manufacturer")
-    fuel_type = relationship("FuelType")
-    car_class = relationship("CarClass")
+    manufacturer = relationship("Manufacturer", lazy="selectin")
+    fuel_type = relationship("FuelType", lazy="selectin")
+    car_class = relationship("CarClass", lazy="selectin")
     
     def __repr__(self):
         return f"<Car(id='{self.id}', model='{self.model}')>"

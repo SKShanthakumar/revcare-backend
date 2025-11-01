@@ -1,8 +1,8 @@
-"""initial revision
+"""car lazy load
 
-Revision ID: d8510d18dc36
-Revises: 
-Create Date: 2025-10-30 21:18:46.283613
+Revision ID: 365340ab2ff0
+Revises: 6b52c9897f68
+Create Date: 2025-11-02 00:16:40.165115
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd8510d18dc36'
-down_revision: Union[str, Sequence[str], None] = None
+revision: str = '365340ab2ff0'
+down_revision: Union[str, Sequence[str], None] = '6b52c9897f68'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -27,7 +27,7 @@ async def login(response: Response, username: str = Form(...), password: str = F
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/refresh")
-async def refresh_token(request: Request, response: Response, db: Session = Depends(get_postgres_db)):
+async def refresh_token(request: Request, db: Session = Depends(get_postgres_db)):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
@@ -35,8 +35,9 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
     return await auth.get_access_token_using_refresh_token(refresh_token, db)
 
 @router.post("/logout")
-async def logout(response: Response, payload = Security(validate_token, scopes=[]), db: Session = Depends(get_postgres_db)):
-    await auth.logout_user(payload, db)
+async def logout(request: Request, response: Response, payload = Security(validate_token, scopes=[]), db: Session = Depends(get_postgres_db)):
+    refresh_token = request.cookies.get("refresh_token")
+    await auth.logout_user(payload, refresh_token, db)
 
     # Delete refresh token cookie
     response.delete_cookie(key="refresh_token")

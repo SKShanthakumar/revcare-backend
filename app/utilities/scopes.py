@@ -49,7 +49,6 @@ scopes = {
     "WRITE:CUSTOMER_CARS": [1, 3],
     "DELETE:CUSTOMER_CARS": [1, 3],
     "UPDATE:CUSTOMER_CARS": [1, 3],
-
 }
 
 def get_all_scopes():

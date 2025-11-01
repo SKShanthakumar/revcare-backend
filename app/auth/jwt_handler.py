@@ -52,7 +52,7 @@ Decode JWT using the access secret key.
 Check that type is "access" → ensures a refresh token is not used by mistake.
 Returns payload if valid, else None.'''
 
-def decode_access_token(token: str):
+def decode_access_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "access":
@@ -66,7 +66,7 @@ def decode_access_token(token: str):
 Same logic but for refresh tokens.
 Only refresh tokens will pass the type check.'''
 
-def decode_refresh_token(token: str):
+def decode_refresh_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "refresh":

@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.ext.asyncio import AsyncSession as Session
+from sqlalchemy.exc import IntegrityError
 from typing import Dict, Any, Optional
 
 async def get_all_records(
@@ -42,11 +43,16 @@ async def get_record_by_primary_key(db: Session, pk, model):
     return record
 
 async def create_record(db: Session, data: dict, model):
-    record = model(**data)
-    db.add(record)
-    await db.commit()
-    await db.refresh(record)
-    return record
+    try:
+        record = model(**data)
+        db.add(record)
+        await db.commit()
+        await db.refresh(record)
+        return record
+    except IntegrityError as e:
+        await db.rollback()
+        print(e)
+        raise HTTPException(status_code=400, detail="Invalid foreign key reference")
 
 async def update_record_by_primary_key(db: Session, id: str, new_data: dict, model):
     record = await db.get(model, id)

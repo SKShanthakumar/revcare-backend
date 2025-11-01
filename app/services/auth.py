@@ -62,7 +62,7 @@ async def get_access_token_using_refresh_token(refresh_token: str, db: Session):
 
     return JSONResponse(content={"access_token": new_access_token, "token_type": "bearer"})
 
-async def logout_user(access_token_payload: str, db: Session):
+async def logout_user(access_token_payload: dict, refresh_token: str, db: Session):
     jti = access_token_payload.get("jti")
     exp_timestamp = access_token_payload.get("exp")
     exp = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
@@ -72,15 +72,17 @@ async def logout_user(access_token_payload: str, db: Session):
     revoked_token = RevokedToken(jti=jti, expires_at=exp)
     db.add(revoked_token)
 
-    result = await db.execute(select(RefreshToken).where(RefreshToken.user_id == user_id))
-    refresh_token = result.scalar_one_or_none()
-    if refresh_token:
-        refres_jti = refresh_token.jti
-        refres_exp = refresh_token.expires_at
+    refresh_token_payload = decode_refresh_token(refresh_token)
+    refresh_jti = refresh_token_payload.get("jti")
+    refresh_exp = refresh_token_payload.get("exp")
+    refresh_exp = datetime.fromtimestamp(refresh_exp, tz=timezone.utc)
 
-        # Blacklist refresh token
-        revoked_token = RevokedToken(jti=refres_jti, expires_at=refres_exp)
-        db.add(revoked_token)
-        await db.delete(refresh_token)
+    # Blacklist refresh token
+    revoked_token = RevokedToken(jti=refresh_jti, expires_at=refresh_exp)
+    db.add(revoked_token)
+
+    refresh_token_model = await db.get(RefreshToken, refresh_jti)
+    if refresh_token_model:
+        await db.delete(refresh_token_model)
 
     await db.commit()

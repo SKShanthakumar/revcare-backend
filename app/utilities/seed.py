@@ -187,7 +187,6 @@ async def seed_rbac(db: Session):
             print("Permissions already exist, skipping seeding.")
 
         # Refresh permission objects
-        result = await db.execute(select(Permission))
         all_permissions = {p.permission: p for p in result.scalars().all()}
         # Group permissions by role
         admin_perm_names = get_admin_scopes()
