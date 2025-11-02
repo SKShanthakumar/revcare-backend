@@ -36,7 +36,7 @@ class CustomerCarBase(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Customer ID cannot be empty")
-        # Assuming format like CST000001
+        # format like CST000001
         if not re.match(r'^CST\d{6}$', v):
             raise ValueError("Customer ID must be in format CST followed by 6 digits")
         return v
@@ -93,7 +93,7 @@ class CustomerCarUpdate(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Customer ID cannot be empty")
-        # Assuming format like CST000001
+        # format like CST000001
         if not re.match(r'^CST\d{6}$', v):
             raise ValueError("Customer ID must be in format CST followed by 6 digits")
         return v

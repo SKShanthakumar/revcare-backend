@@ -24,15 +24,16 @@ async def get_customer_by_id(id: str, db: Session = Depends(get_postgres_db), pa
 
 @router.put("/{id}", response_model=CustomerResponse)
 async def update_customer(id: str, customer_data: CustomerUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:CUSTOMERS"])):
-    if payload.get("role") != 1 and payload.get("user_id") != id:
-        raise HTTPException(status_code=403, detail="Operation not permitted.")
+    if payload.get("role") == 3 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
     
     return await crud.update_record_by_primary_key(db, id.strip(), customer_data.model_dump(exclude_none=True), Customer)
 
 @router.delete("/{id}", response_class=JSONResponse)
 async def delete_customer(id: str, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:CUSTOMERS"])):
-    if payload.get("role") != 1 and payload.get("user_id") != id:
-        raise HTTPException(status_code=403, detail="Operation not permitted.")
+    if payload.get("role") == 3 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
     
     message = await crud.delete_record_by_primary_key(db, id.strip(), Customer)
     return JSONResponse(content=message)
+

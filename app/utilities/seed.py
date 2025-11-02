@@ -1,10 +1,11 @@
 from datetime import date
-from sqlalchemy import text, select, func, delete
+import traceback
+from sqlalchemy import text, select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
-from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car
+from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car, Area, Address
 from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
 from app.auth import hashing
 from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
@@ -128,6 +129,43 @@ BEGIN
 END $$;
 """
 
+CHENNAI_AREAS = [
+    "Adyar", "Velachery", "T Nagar", "Guindy", "Anna Nagar", "Tambaram",
+    "Perungudi", "Thoraipakkam", "Mylapore", "Kodambakkam", "Saidapet",
+    "Besant Nagar", "Egmore", "Nungambakkam", "Porur", "Sholinganallur",
+    "Pallavaram", "Chromepet", "Madipakkam", "Ambattur", "Adambakkam",
+    "Alandur", "Alapakkam", "Alwarpet", "Alwarthirunagar", "Aminjikarai",
+    "Annamalai Nagar", "Arumbakkam", "Avadi", "Ayanavaram", "Ayappakkam",
+    "Basin Bridge", "Broadway", "Chetpet", "Choolaimedu", "Defence Colony",
+    "Egatoor", "ECR", "Gerugambakkam", "Gopalapuram", "Hastinapuram",
+    "Injambakkam", "Irumbuliyur", "Kadaperi", "Kaikondrahalli", "Keelkattalai",
+    "Kottivakkam", "Kovilambakkam", "Maduravoyal", "Mambakkam", "Mambalam",
+    "Manali", "Manali New Town", "Mannurpet", "Mangadu", "MGR Garden",
+    "MGR Nagar", "Mogappair", "Mowlivakkam", "Mugalivakkam", "Nandambakkam",
+    "Nanganallur", "Neelankarai", "Nesapakkam", "Nolambur", "Otteri",
+    "Pallikaranai", "Pammal", "Pazhavanthangal", "Peerkankaranai",
+    "Perungalathur", "Puzhal", "Red Hills", "Ramapuram", "Saligramam",
+    "Selaiyur", "Selavoyal", "Sembiam", "Singaperumalkoil", "Thirumazhisai",
+    "Thirumullaivayal", "Thiruverkadu", "Thiruninravur", "Urapakkam",
+    "Valasaravakkam", "Vadapalani", "Virugambakkam", "Washermanpet",
+    "Royapuram", "Vepery", "Teynampet", "Triplicane", "Royapettah",
+    "Chepauk", "Purasaiwakkam", "Vyasarpadi", "Perambur", "Vandalur",
+    "Medavakkam", "Navalur", "Karapakkam", "Kandanchavadi", "Palavakkam",
+    "Okkiyam Thoraipakkam", "Semmenchery", "Uthandi", "Kelambakkam",
+    "Tiruvanmiyur", "West Mambalam", "Kotturpuram", "Mandaveli",
+    "Santhome", "Chintadripet", "Korratur", "Villivakkam", "Tiruvottiyur",
+    "Ennore", "Minjur", "Madhavaram", "Periyar Nagar", "Kolathur", "Washermanpet",
+    "Egmore", "Choolai", "Aminjikarai", "Arumbakkam", "CIT Nagar", "Nandanam",
+    "Ashok Nagar", "KK Nagar", "Virugambakkam", "Valasaravakkam", "Kattupakkam",
+    "Iyyappanthangal", "Porur", "Gerugambakkam", "Mugalivakkam", "Manapakkam",
+    "Ramapuram", "Ekkatuthangal", "Jafferkhanpet", "Saidapet", "Guindy",
+    "Little Mount", "St. Thomas Mount", "Meenambakkam", "Nanganallur",
+    "Pazhavanthangal", "Pammal", "Anakaputhur", "Chitlapakkam", "Selaiyur",
+    "Tambaram Sanatorium", "Tambaram East", "Tambaram West", "Irumbuliyur",
+    "Mudichur", "Perungalathur", "Peerkankaranai", "Vandalur", "Urapakkam",
+    "Guduvanchery", "Singaperumalkoil", "Maraimalai Nagar"
+]
+
 async def init_custom_triggers(db: Session):
     """Create triggers and sequences"""
     try:
@@ -183,34 +221,36 @@ async def seed_rbac(db: Session):
             await db.commit()
             print("Permissions seeded successfully!")
 
+            # Refresh permission objects
+            result = await db.execute(select(Permission))
+            all_permissions = {p.permission: p for p in result.scalars().all()}
+            # Group permissions by role
+            admin_perm_names = get_admin_scopes()
+            mechanic_perm_names = get_mechanic_scopes()
+            customer_perm_names = get_customer_scopes()
+
+            admin_permissions = [all_permissions[name] for name in admin_perm_names]
+            mechanic_permissions = [all_permissions[name] for name in mechanic_perm_names]
+            customer_permissions = [all_permissions[name] for name in customer_perm_names]
+            
+            # optionally clear existing relationships
+            for role in roles.values():
+                role.permissions.clear()
+                
+            roles["admin"].permissions = admin_permissions
+            roles["mechanic"].permissions = mechanic_permissions
+            roles["customer"].permissions = customer_permissions
+
+            await db.commit()
+            print("Role-permission relationships seeded successfully!")
+
         else:
             print("Permissions already exist, skipping seeding.")
-
-        # Refresh permission objects
-        all_permissions = {p.permission: p for p in result.scalars().all()}
-        # Group permissions by role
-        admin_perm_names = get_admin_scopes()
-        mechanic_perm_names = get_mechanic_scopes()
-        customer_perm_names = get_customer_scopes()
-
-        admin_permissions = [all_permissions[name] for name in admin_perm_names]
-        mechanic_permissions = [all_permissions[name] for name in mechanic_perm_names]
-        customer_permissions = [all_permissions[name] for name in customer_perm_names]
-        
-        # optionally clear existing relationships
-        for role in roles.values():
-            role.permissions.clear()
-            
-        roles["admin"].permissions = admin_permissions
-        roles["mechanic"].permissions = mechanic_permissions
-        roles["customer"].permissions = customer_permissions
-
-        await db.commit()
-        print("Role-permission relationships seeded successfully!")
-
+    
     except Exception as e:
         await db.rollback()
         print(f"Error seeding RBAC data: {e}")
+        traceback.print_exc()
 
 async def seed_users(db: Session):
     try:
@@ -256,6 +296,71 @@ async def seed_users(db: Session):
 
     except Exception as e:
         print(f"Error seeding User data: {e}")
+
+async def seed_addresses(db: Session):
+    try:
+        # Seed Areas
+        result = await db.execute(select(func.count()).select_from(Area))
+        area_count = result.scalar()
+
+        if area_count == 0:
+            areas = [Area(name=name) for name in CHENNAI_AREAS]
+            db.add_all(areas)
+            await db.commit()
+            print(f"Seeded {len(areas)} areas successfully!")
+        else:
+            print("Areas already exist, skipping seeding.")
+
+        # Fetch two customers (Surya & Rahul)
+        result = await db.execute(
+            select(Customer).where(Customer.email.in_(["surya@gmail.com", "rahul@gmail.com"]))
+        )
+        customers = result.scalars().all()
+
+        if not customers:
+            print("No customers found. Please seed users first.")
+            return
+
+        # Fetch two random areas to assign addresses
+        result = await db.execute(select(Area).limit(2))
+        areas = result.scalars().all()
+
+        if len(areas) < 2:
+            print("Not enough areas to assign addresses.")
+            return
+
+        # Create sample addresses
+        addresses = [
+            Address(
+                customer_id=str(customers[0].id),
+                label="Home",
+                line1="23, Rajiv Gandhi Street",
+                line2="Near Velachery Railway Station",
+                area_id=areas[0].id,
+            ),
+            Address(
+                customer_id=str(customers[1].id),
+                label="Home",
+                line1="17, Anna Salai",
+                line2="Opposite Express Avenue",
+                area_id=areas[1].id,
+            )
+        ]
+
+        # Insert only if no addresses exist
+        result = await db.execute(select(func.count()).select_from(Address))
+        address_count = result.scalar()
+
+        if address_count == 0:
+            db.add_all(addresses)
+            await db.commit()
+            print("Addresses seeded successfully!")
+        else:
+            print("Addresses already exist, skipping seeding.")
+
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding address data: {e}")
 
 async def seed_car_utils(db: Session):
     """Seed car-related utility tables (fuel types, manufacturers, car classes, and sample cars)"""
@@ -433,6 +538,7 @@ async def run_seed():
             await init_delete_triggers(db)
             await seed_rbac(db)
             await seed_users(db)
+            await seed_addresses(db)
             await seed_car_utils(db)
 
         finally:

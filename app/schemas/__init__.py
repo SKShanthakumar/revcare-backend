@@ -7,3 +7,5 @@ from .car_class import *
 from .customer_car import *
 from .manufacturer import *
 from .fuel_type import *
+from .address import *
+from .area import *

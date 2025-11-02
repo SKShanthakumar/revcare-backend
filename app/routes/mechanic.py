@@ -24,14 +24,14 @@ async def get_mechanic_by_id(id: str, db: Session = Depends(get_postgres_db), pa
 
 @router.put("/{id}", response_model=MechanicResponse)
 async def update_mechanic(id: str, mechanic_data: MechanicUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:MECHANICS"])):
-    if payload.get("role") != 1 and payload.get("user_id") != id:
+    if payload.get("role") == 2 and payload.get("user_id") != id:
         raise HTTPException(status_code=403, detail="Operation not permitted.")
     
     return await crud.update_record_by_primary_key(db, id.strip(), mechanic_data.model_dump(exclude_none=True), Mechanic)
 
 @router.delete("/{id}", response_class=JSONResponse)
 async def delete_mechanic(id: str, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:MECHANICS"])):
-    if payload.get("role") != 1 and payload.get("user_id") != id:
+    if payload.get("role") == 2 and payload.get("user_id") != id:
         raise HTTPException(status_code=403, detail="Operation not permitted.")
     
     message = await crud.delete_record_by_primary_key(db, id.strip(), Mechanic)

@@ -91,15 +91,23 @@ async def delete_manufacturer_by_id(id: int, db: Session = Depends(get_postgres_
 async def get_customer_cars(db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:CUSTOMER_CARS"])):
     return await crud.get_all_records(db, CustomerCar)
 
+@router.get("/{id}", response_model=CustomerCarResponse)
+async def get_customer_car_by_id(id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:CUSTOMER_CARS"])):
+    return await crud.get_record_by_primary_key(db, id, CustomerCar)
+
 @router.post("/", response_model=CustomerCarResponse)
 async def create_customer_car(customer_car: CustomerCarCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:CUSTOMER_CARS"])):
     return await crud.create_record(db, customer_car.model_dump(), CustomerCar)
 
 @router.put("/{id}", response_model=CustomerCarResponse)
 async def update_customer_car_by_id(id: int, customer_car: CustomerCarUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:CUSTOMER_CARS"])):
+    if payload.get("role") == 3 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access cars of other customers.")
     return await crud.update_record_by_primary_key(db, id, customer_car.model_dump(exclude_none=True), CustomerCar)
 
 @router.delete("/{id}", response_class=JSONResponse)
 async def delete_customer_car_by_id(id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:CUSTOMER_CARS"])):
+    if payload.get("role") == 3 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access cars of other customers.")
     message = await crud.delete_record_by_primary_key(db, id, CustomerCar)
     return JSONResponse(content=message)
