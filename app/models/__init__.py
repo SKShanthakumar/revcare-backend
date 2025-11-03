@@ -19,3 +19,7 @@ from .fuel_type import *
 from .manufacturer import *
 from .area import *
 from .address import *
+from .price_chart import *
+from .service import *
+from .service_category import *
+from .service_reviews import *

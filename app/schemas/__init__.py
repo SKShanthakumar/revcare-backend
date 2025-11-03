@@ -9,3 +9,7 @@ from .manufacturer import *
 from .fuel_type import *
 from .address import *
 from .area import *
+from .price_chart import *
+from .service_category import *
+from .service_reviews import *
+from .service import *

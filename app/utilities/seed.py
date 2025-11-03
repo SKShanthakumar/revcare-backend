@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
-from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car, Area, Address
+from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car, Area, Address, ServiceCategory
 from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
 from app.auth import hashing
 from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
@@ -526,6 +526,74 @@ async def seed_car_utils(db: Session):
         await db.rollback()
         print(f"Error seeding Car utils data: {e}")
 
+async def seed_service_categories(db: Session):
+    try:
+        # Check if service categories already exist
+        result = await db.execute(select(func.count()).select_from(ServiceCategory))
+        category_count = result.scalar()
+
+        if category_count == 0:
+            categories = [
+                ServiceCategory(
+                    name="Service Packages",
+                    description="Pre-designed bundles for hassle-free and complete car care."
+                ),
+                ServiceCategory(
+                    name="Engine Services",
+                    description="Comprehensive maintenance to ensure smooth and efficient engine performance."
+                ),
+                ServiceCategory(
+                    name="Brake Services",
+                    description="Specialized care to maintain reliable and safe braking performance."
+                ),
+                ServiceCategory(
+                    name="Transmission & Clutch",
+                    description="Services to keep shifting smooth and power delivery consistent."
+                ),
+                ServiceCategory(
+                    name="Suspension & Steering",
+                    description="Focused care for driving comfort, handling, and long-term stability."
+                ),
+                ServiceCategory(
+                    name="Electrical & Battery",
+                    description="Diagnostics and repairs for reliable power and electronic systems."
+                ),
+                ServiceCategory(
+                    name="Air Conditioning & Heating",
+                    description="Cooling and heating system services for year-round driving comfort."
+                ),
+                ServiceCategory(
+                    name="Tyres & Wheels",
+                    description="Complete tyre and wheel care for safety, balance, and longer tyre life."
+                ),
+                ServiceCategory(
+                    name="Body & Paint Work",
+                    description="Cosmetic and structural repairs to restore your vehicle’s look and finish."
+                ),
+                ServiceCategory(
+                    name="Washing & Detailing",
+                    description="Thorough cleaning and detailing services for a fresh, polished appearance."
+                ),
+                ServiceCategory(
+                    name="Accessories & Add-Ons",
+                    description="Enhancements and installations to upgrade your car’s style and functionality."
+                ),
+                ServiceCategory(
+                    name="Hybrid & EV Services",
+                    description="Specialized maintenance and diagnostics for hybrid and electric vehicle systems."
+                ),
+            ]
+
+            db.add_all(categories)
+            await db.commit()
+            print("Service categories seeded successfully!")
+
+        else:
+            print("Service categories already exist, skipping seeding.")
+
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding service categories: {e}")
 
 async def run_seed():
     """Run all startup DB seeding logic"""
@@ -540,6 +608,7 @@ async def run_seed():
             await seed_users(db)
             await seed_addresses(db)
             await seed_car_utils(db)
+            await seed_service_categories(db)
 
         finally:
             await db.close()

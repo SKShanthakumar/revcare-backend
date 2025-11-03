@@ -12,6 +12,10 @@ class CarClassBase(BaseModel):
         if not v:
             raise ValueError("Car class cannot be empty or only whitespace")
         return v
+    
+    class Config:
+        from_attributes = True
+        populate_by_name = True
 
 class CarClassCreate(CarClassBase):
     """Schema for creating a new car class"""

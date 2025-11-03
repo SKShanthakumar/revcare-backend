@@ -59,6 +59,16 @@ scopes = {
     "WRITE:ADDRESSES": [1, 3],
     "DELETE:ADDRESSES": [1, 3],
     "UPDATE:ADDRESSES": [1, 3],
+
+    "READ:SERVICE_CATEGORIES": [1, 2, 3],
+    "WRITE:SERVICE_CATEGORIES": [1],
+    "DELETE:SERVICE_CATEGORIES": [1],
+    "UPDATE:SERVICE_CATEGORIES": [1],
+
+    "READ:SERVICES": [1, 2, 3],
+    "WRITE:SERVICES": [1],
+    "DELETE:SERVICES": [1],
+    "UPDATE:SERVICES": [1],
 }
 
 def get_all_scopes():
