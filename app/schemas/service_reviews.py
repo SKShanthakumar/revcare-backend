@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
-
+from .customer import CustomerBase
 
 class ServiceReviewBase(BaseModel):
     """Base schema for ServiceReview"""
@@ -56,21 +56,11 @@ class ServiceReviewBase(BaseModel):
 class ServiceReviewCreate(ServiceReviewBase):
     """Schema for creating a new service review"""
     service_id: int = Field(..., gt=0, description="Service ID reference")
-    customer_id: str = Field(..., min_length=1, description="Customer ID reference")
-    
-    @field_validator('customer_id')
-    def validate_customer_id(cls, v: str) -> str:
-        """Validate customer ID"""
-        v = v.strip()
-        if not v:
-            raise ValueError("Customer ID cannot be empty")
-        return v
 
 
 class ServiceReviewResponse(ServiceReviewBase):
     """Schema for service review response"""
-    service_id: int = Field(..., description="Service ID reference")
-    customer_id: str = Field(..., description="Customer ID reference")
+    customer: CustomerBase = Field(..., description="Customer data")
     created_at: datetime = Field(..., description="Timestamp when review was created")
     
     class Config:
@@ -122,19 +112,8 @@ class ServiceReviewUpdate(BaseModel):
         for url in v:
             if not url.startswith(('http://', 'https://', '/')):
                 raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
         
         return v if v else None
-
-
-class ServiceReviewWithDetails(ServiceReviewResponse):
-    """Schema for service review response with customer and service details"""
-    customer: dict = Field(..., description="Customer details")
-    service: dict = Field(..., description="Service details")
-    
-    class Config:
-        from_attributes = True
 
 
 class ServiceReviewStats(BaseModel):

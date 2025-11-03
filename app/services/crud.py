@@ -3,7 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
-from typing import Dict, Any, Optional
+from sqlalchemy.orm.strategy_options import _AbstractLoad
+from typing import Dict, Any, Optional, List
 
 async def get_all_records(
         db: Session,
@@ -13,8 +14,13 @@ async def get_all_records(
         offset: Optional[int] = None,
         order_by: Optional[InstrumentedAttribute] = None,
         desc: bool = False,
+        options: Optional[List[_AbstractLoad]] = None,
     ):
     query = select(model)
+
+    # Apply ORM options like selectinload, joinedload, etc.
+    if options:
+        query = query.options(*options)
 
     # Apply filters dynamically
     if filters:
@@ -35,6 +41,25 @@ async def get_all_records(
 
     result = await db.execute(query)
     return result.scalars().all()
+
+async def get_one_record(
+    db: Session,
+    model: Any,
+    filters: Optional[Dict[str, Any]] = None,
+    options: Optional[List[_AbstractLoad]] = None,
+) -> Optional[Any]:
+    query = select(model)
+
+    if options:
+        query = query.options(*options)
+
+    if filters:
+        for field_name, value in filters.items():
+            if hasattr(model, field_name):
+                query = query.where(getattr(model, field_name) == value)
+
+    result = await db.execute(query)
+    return result.scalars().first()
 
 async def get_record_by_primary_key(db: Session, pk, model):
     record = await db.get(model, pk)
@@ -69,6 +94,48 @@ async def update_record_by_primary_key(db: Session, id: str, new_data: dict, mod
 
 async def delete_record_by_primary_key(db: Session, pk, model):
     record = await db.get(model, pk)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"{model.__name__} not found.")
+
+    await db.delete(record)
+    await db.commit()
+
+    return {"detail": f"{model.__name__} deleted successfully."}
+
+from sqlalchemy import select, and_
+from fastapi import HTTPException
+
+async def update_record_by_composite_key(db: Session, pk: dict, new_data: dict, model):
+    """
+    pk: dict of primary key fields, e.g. {"user_id": "CST000123", "service_id": 42}
+    """
+    # Build query for composite or single PK
+    filters = [getattr(model, key) == value for key, value in pk.items()]
+    query = select(model).where(and_(*filters))
+    result = await db.execute(query)
+    record = result.scalar_one_or_none()
+
+    if not record:
+        raise HTTPException(status_code=404, detail=f"{model.__name__} not found.")
+    
+    for key, value in new_data.items():
+        if hasattr(record, key):
+            setattr(record, key, value)
+
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_record_by_composite_key(db: Session, pk: dict, model):
+    """
+    pk: dict of primary key fields, e.g. {"user_id": "CST000123", "service_id": 42}
+    """
+    filters = [getattr(model, key) == value for key, value in pk.items()]
+    query = select(model).where(and_(*filters))
+    result = await db.execute(query)
+    record = result.scalar_one_or_none()
+
     if not record:
         raise HTTPException(status_code=404, detail=f"{model.__name__} not found.")
 

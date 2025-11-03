@@ -128,3 +128,10 @@ class ServiceUpdate(BaseModel):
         if v is not None and v <= 0:
             raise ValueError("Service time must be greater than 0")
         return v
+    
+    class Config:
+        extra = "ignore"
+
+class ServiceUpdateWithForeignData(ServiceUpdate):
+    price_chart: Optional[List[PriceChartCreateWithService]] = Field(None, description="Price for each car class")
+    fuel_type_ids: Optional[List[int]] = Field(None, description="Compatible fuel type ids")
