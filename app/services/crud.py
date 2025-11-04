@@ -27,7 +27,10 @@ async def get_all_records(
         for field_name, value in filters.items():
             if hasattr(model, field_name):
                 field = getattr(model, field_name)
-                query = query.where(field == value)
+                if isinstance(value, (list, tuple, set)):
+                    query = query.where(field.in_(value))
+                else:
+                    query = query.where(field == value)
 
     # Apply sorting
     if order_by is not None:

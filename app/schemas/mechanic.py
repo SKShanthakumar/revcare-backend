@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 import re
+from .service_category import ServiceCategoryResponse
 
 class MechanicBase(BaseModel):
     name: str = Field(..., min_length=1)
@@ -30,6 +31,8 @@ class MechanicCreate(MechanicBase):
         min_length=8, 
         description="Must contain at least one uppercase, one lowercase, and one special character"
     )
+    service_category_ids: List[int] = Field(..., description="Category of services that the mechanic can do")
+
 
     @field_validator("password")
     def validate_password(cls, v: str) -> str:
@@ -44,6 +47,7 @@ class MechanicCreate(MechanicBase):
 class MechanicResponse(MechanicBase):
     id: str
     assigned: Optional[bool] = False
+    service_categories: List[ServiceCategoryResponse] = Field(..., description="Category of services that the mechanic can do")
 
     class Config:
         from_attributes = True
@@ -70,3 +74,6 @@ class MechanicUpdate(BaseModel):
             raise ValueError("Age cannot exceed 60 years.")
         
         return value
+
+class MechanicUpdateWithForeignData(MechanicUpdate):
+    service_category_ids: Optional[List[int]] = Field(None, description="Category of services that the mechanic can do")

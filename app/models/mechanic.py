@@ -1,7 +1,14 @@
-from sqlalchemy import Column, VARCHAR, TIMESTAMP, Boolean, ForeignKey, Date, FetchedValue, BIGINT, Integer
+from sqlalchemy import Table, Column, VARCHAR, TIMESTAMP, Boolean, ForeignKey, Date, FetchedValue, BIGINT, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+
+mechanic_service_categories = Table(
+    "mechanic_service_categories",
+    Base.metadata,
+    Column("mechanic_id", VARCHAR, ForeignKey("mechanics.id", ondelete='CASCADE', onupdate='CASCADE')),
+    Column("service_category_id", Integer, ForeignKey("service_categories.id", ondelete='CASCADE', onupdate='CASCADE'))
+)
 
 class Mechanic(Base):
     """Mechanic-specific attributes linked to users"""
@@ -20,6 +27,7 @@ class Mechanic(Base):
     
     # Relationships
     role = relationship("Role")
+    service_categories = relationship("ServiceCategory", secondary=mechanic_service_categories, lazy="selectin")
 
     def __repr__(self):
         return f"<Mechanic(id={self.id}, name={self.name})>"

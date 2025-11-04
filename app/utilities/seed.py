@@ -248,7 +248,8 @@ async def seed_users(db: Session):
                 dob=date(year=2000, month=12, day=12),
                 pickup_drop=False,
                 analysis=True,
-                password='Sk18102004.'
+                password='Sk18102004.',
+                service_category_ids=[1,2,4,5,6,8,9]
             )
 
             await create_user(db, admin, Admin)

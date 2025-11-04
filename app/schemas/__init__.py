@@ -13,3 +13,6 @@ from .price_chart import *
 from .service_category import *
 from .service_reviews import *
 from .service import *
+from .assignment_type import *
+from .status import *
+from .timeslot import *

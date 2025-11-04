@@ -1,58 +1,140 @@
 from fastapi import HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession as Session
+from sqlalchemy.exc import IntegrityError
 from app.auth import hashing
-from app.models import Customer, User, Role, Admin, Mechanic
-from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
+from app.models import Customer, User, Role, Admin, Mechanic, ServiceCategory
+from app.schemas import CustomerCreate, AdminCreate, MechanicCreate, MechanicUpdate, MechanicUpdateWithForeignData
+from app.utilities.data_processing import filter_data_for_model
+from app.services import crud
 
-async def create_user(db: Session, user: CustomerCreate | AdminCreate | MechanicCreate, model: Customer | Admin | Mechanic):
+async def create_user(db: Session, user: CustomerCreate | AdminCreate, model: Customer | Admin):
     phone = user.phone
     hashed_password = hashing.hash_password(user.password)
     model_name = model.__name__.lower()
 
-    # extract user role id
+    # Get user role
     result = await db.execute(select(Role).where(Role.role_name.ilike(model_name)))
     user_role = result.scalar_one_or_none()
     if not user_role:
         raise HTTPException(status_code=500, detail="Specified role not found.")
-    
-    # Create and commit user first
+
+    # Check if phone already exists (optional for friendly message)
     result = await db.execute(select(User).where(User.phone == phone))
-    existing = result.scalar_one_or_none()
-    if existing:
+    if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="User with this phone number already exists.")
-    
+
+    # Check if email already exists in Customer/Admin
+    result = await db.execute(select(model).where(model.email == user.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="User with this email already exists.")
+
+    # Create both records within one transaction
     db_user = User(phone=phone, password=hashed_password, role_id=user_role.id)
     db.add(db_user)
-    await db.commit()
+    await db.flush()
+
+    db_sub_user = model(
+        name=user.name,
+        phone=user.phone,
+        email=user.email,
+        role_id=user_role.id
+    )
+    db.add(db_sub_user)
 
     try:
-        if model_name == "mechanic":
-            db_user = model(
-                name=user.name,
-                phone=phone,
-                dob=user.dob,
-                pickup_drop=user.pickup_drop,
-                analysis=user.analysis,
-                role_id=user_role.id
-            )
-        else:
-            result = await db.execute(select(model).where(model.email == user.email))
-            existing = result.scalar_one_or_none()
-            if existing:
-                raise HTTPException(status_code=400, detail="User with this email already exists.")
-            
-            # create user
-            db_user = model(name=user.name, phone=user.phone, email=user.email, role_id=user_role.id)
-        db.add(db_user)    
         await db.commit()
-        await db.refresh(db_user)
-        return db_user
-    
-    except Exception as e:
-        # If user creation fails, rollback and delete the user
+        await db.refresh(db_sub_user)
+        return db_sub_user
+
+    except IntegrityError as e:
         await db.rollback()
-        await db.execute(delete(User).where(User.phone == phone))
-        await db.commit()
-        raise e
+        raise HTTPException(status_code=400, detail="Duplicate or invalid data detected.")
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
     
+async def create_mechanic(db: Session, user: MechanicCreate):
+    phone = user.phone
+    hashed_password = hashing.hash_password(user.password)
+
+    # Get user role
+    result = await db.execute(select(Role).where(Role.role_name.ilike("mechanic")))
+    role_object = result.scalar_one_or_none()
+    if not role_object:
+        raise HTTPException(status_code=500, detail="Mechanic role not found.")
+    
+    # Check if phone already exists (optional for friendly message)
+    result = await db.execute(select(User).where(User.phone == phone))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="User with this phone number already exists.")
+
+    # Create record in users table (common for all 3 users)
+    db_user = User(phone=phone, password=hashed_password, role_id=role_object.id)
+    db.add(db_user)
+    await db.flush()
+
+    filtered_data = filter_data_for_model(Mechanic, user.model_dump())
+    filtered_data["role_id"] = role_object.id
+    db_sub_user = Mechanic(**filtered_data)
+
+    # fetch service category models to establish relationship
+    if user.service_category_ids:
+        filters = {"id": user.service_category_ids}
+        service_category_models = await crud.get_all_records(db, ServiceCategory, filters=filters)
+        db_sub_user.service_categories = service_category_models
+    db.add(db_sub_user)
+
+    try:
+        await db.commit()
+        await db.refresh(db_sub_user)
+        return db_sub_user
+
+    except IntegrityError as e:
+        await db.rollback()
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(status_code=400, detail="Duplicate or invalid data detected.")
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    
+
+async def update_mechanic(db: Session, mechanic_id: int, update_schema: MechanicUpdateWithForeignData):
+    mechanic_base_schema = MechanicUpdate(**update_schema.model_dump(exclude_none=True))
+    new_data = mechanic_base_schema.model_dump(exclude_none=True)
+
+    mechanic: Mechanic = await crud.get_record_by_primary_key(db, mechanic_id, Mechanic)
+    if not mechanic:
+        raise HTTPException(status_code=404, detail="Mechanic not found")
+
+    flag = False    # to check any db transaction made
+    
+    if new_data:
+        flag = True
+        await crud.update_record_by_primary_key(db, mechanic_id, new_data, Mechanic)
+    
+    if update_schema.service_category_ids is not None:
+        flag = True
+        if len(update_schema.service_category_ids) > 0:
+            filters = {"id": update_schema.service_category_ids}
+            service_category_models = await crud.get_all_records(db, ServiceCategory, filters=filters)
+            print(service_category_models)
+            mechanic.service_categories = service_category_models
+        else:
+            mechanic.service_categories = []
+
+    if flag:
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(status_code=400, detail="Duplicate or invalid data detected.")
+
+    await db.refresh(mechanic)
+
+    return mechanic

@@ -116,25 +116,35 @@ async def update_service(db: Session, service_id: int, update_schema: ServiceUpd
     service_base_schema = ServiceUpdate(**update_schema.model_dump(exclude_none=True))
     new_data = service_base_schema.model_dump(exclude_none=True)
 
+    service: Service = await crud.get_record_by_primary_key(db, service_id, Service)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
     flag = False    # to check any db transaction made
     
     if new_data:
         flag = True
         await crud.update_record_by_primary_key(db, service_id, new_data, Service)
 
-    service: Service = await crud.get_record_by_primary_key(db, service_id, Service)
-
-    if update_schema.price_chart:
+    if update_schema.price_chart is not None:
         flag = True
         await update_service_price_chart(db, service_id, update_schema.price_chart)
-
-    if update_schema.fuel_type_ids:
+        
+    if update_schema.fuel_type_ids is not None:
         flag = True
-        fuel_types = await get_fuel_type_models(db, update_schema.fuel_type_ids)
-        service.fuel_types = fuel_types
+        if len(update_schema.fuel_type_ids) > 0:
+            fuel_types = await get_fuel_type_models(db, update_schema.fuel_type_ids)
+            service.fuel_types = fuel_types
+        else:
+            service.fuel_types = []
 
     if flag:
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(status_code=400, detail="Duplicate or invalid data detected.")
+
     await db.refresh(service)
 
     return service

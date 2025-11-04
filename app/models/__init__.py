@@ -25,3 +25,6 @@ from .service_category import *
 from .service_reviews import *
 from .cart import *
 from .favourite import *
+from .assignment_type import *
+from .timeslot import *
+from .status import *
