@@ -23,3 +23,5 @@ from .price_chart import *
 from .service import *
 from .service_category import *
 from .service_reviews import *
+from .cart import *
+from .favourite import *

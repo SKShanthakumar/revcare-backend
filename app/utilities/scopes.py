@@ -79,6 +79,16 @@ scopes = {
     "WRITE:SERVICE_REVIEWS": [1, 3],
     "DELETE:SERVICE_REVIEWS": [1, 3],
     "UPDATE:SERVICE_REVIEWS": [1, 3],
+
+    "READ:FAVOURITES": [1, 2, 3],
+    "WRITE:FAVOURITES": [1, 3],
+    "DELETE:FAVOURITES": [1, 3],
+    "UPDATE:FAVOURITES": [1],
+
+    "READ:CART": [1, 2, 3],
+    "WRITE:CART": [1, 3],
+    "DELETE:CART": [1, 3],
+    "UPDATE:CART": [1],
 }
 
 def get_all_scopes():

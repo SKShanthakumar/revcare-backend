@@ -32,10 +32,17 @@ async def delete_area_by_id(id: int, db: Session = Depends(get_postgres_db), pay
 # address routes
 @router.get("/", response_model=List[AddressResponse])
 async def get_customer_addresses(customer_id: Optional[str] = None, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:ADDRESSES"])):
-    if (customer_id is None or customer_id != payload.get("user_id")) and payload.get("role") == 3:
-        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access addresses of other customers.")
-    
-    filters = {"customer_id": customer_id} if customer_id else None
+    filters = None
+    if customer_id is not None:
+        if payload.get("role") == 3 and (customer_id != payload.get("user_id")):
+            raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access addresses of other customers.")
+        
+        filters = {"customer_id": customer_id}
+    else:
+        user_id = payload.get("user_id")
+        if user_id.startswith("CST"):
+            filters = {"customer_id": user_id}
+
     return await crud.get_all_records(db, Address, filters=filters)
 
 @router.post("/", response_model=AddressResponse)

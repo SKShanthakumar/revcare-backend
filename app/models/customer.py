@@ -19,6 +19,8 @@ class Customer(Base):
     # Relationships
     role = relationship("Role")
     addresses = relationship("Address", back_populates="customer", lazy="selectin", cascade="all, delete-orphan")
+    favourites = relationship("Favourite", lazy="selectin", cascade="all, delete-orphan")
+    cart = relationship("Cart", lazy="selectin", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Customer(id='{self.id}', name='{self.name}', phone='{self.phone}')>"

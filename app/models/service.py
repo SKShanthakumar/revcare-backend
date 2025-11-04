@@ -23,6 +23,7 @@ class Service(Base):
     warranty_months = Column(Integer, CheckConstraint('warranty_months >= 0'), nullable=False)
     time_hrs = Column(NUMERIC(5, 2), nullable=False)  # Up to 999.99 hours
     difficulty = Column(SMALLINT, CheckConstraint('difficulty BETWEEN 1 AND 5'), nullable=False)
+    images = Column(ARRAY(VARCHAR), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
     
     # Relationship

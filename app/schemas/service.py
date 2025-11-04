@@ -15,7 +15,29 @@ class ServiceBase(BaseModel):
     warranty_months: int = Field(..., ge=0, description="Warranty in months")
     time_hrs: Decimal = Field(..., ge=0, le=999.99, description="Expected service time in hours")
     difficulty: int = Field(..., ge=1, le=5, description="Difficulty level (1-5)")
-    
+    images: list[str] = Field(..., max_length=5, description="List of image URLs")
+
+    @field_validator('images')
+    def validate_images(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        """Validate image URLs"""
+        if v is None:
+            return v
+        
+        # Remove empty strings and duplicates
+        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
+        
+        if len(v) > 5:
+            raise ValueError("Maximum 5 images allowed")
+        
+        # Basic URL validation
+        for url in v:
+            if not url.startswith(('http://', 'https://', '/')):
+                raise ValueError(f"Invalid image URL: {url}")
+            if len(url) > 500:
+                raise ValueError(f"Image URL too long: {url}")
+        
+        return v if v else None
+
     @field_validator('title')
     def validate_title(cls, v: str) -> str:
         """Validate and normalize service title"""
@@ -60,6 +82,7 @@ class ServiceCreate(ServiceBase):
     category_id: int = Field(..., gt=0, description="Service category reference")
     price_chart: List[PriceChartCreateWithService] = Field(..., description="Price for each car class")
     fuel_type_ids: List[int] = Field(..., description="Compatible fuel type ids")
+    
 
 
 class ServiceResponse(ServiceBase):
@@ -84,7 +107,8 @@ class ServiceUpdate(BaseModel):
     warranty_months: Optional[int] = Field(None, ge=0, description="Warranty in months")
     time_hrs: Optional[Decimal] = Field(None, ge=0, le=999.99, description="Expected service time in hours")
     difficulty: Optional[int] = Field(None, ge=1, le=5, description="Difficulty level (1-5)")
-    
+    images: Optional[list[str]] = Field(None, max_length=5, description="List of image URLs (max 5)")
+
     @field_validator('title')
     def validate_title(cls, v: Optional[str]) -> Optional[str]:
         """Validate and normalize service title"""
@@ -128,6 +152,27 @@ class ServiceUpdate(BaseModel):
         if v is not None and v <= 0:
             raise ValueError("Service time must be greater than 0")
         return v
+    
+    @field_validator('images')
+    def validate_images(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        """Validate image URLs"""
+        if v is None:
+            return v
+        
+        # Remove empty strings and duplicates
+        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
+        
+        if len(v) > 5:
+            raise ValueError("Maximum 5 images allowed")
+        
+        # Basic URL validation
+        for url in v:
+            if not url.startswith(('http://', 'https://', '/')):
+                raise ValueError(f"Invalid image URL: {url}")
+            if len(url) > 500:
+                raise ValueError(f"Image URL too long: {url}")
+        
+        return v if v else None
     
     class Config:
         extra = "ignore"

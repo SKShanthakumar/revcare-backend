@@ -1,15 +1,16 @@
 from datetime import date
 import traceback
-from sqlalchemy import text, select, func
+from sqlalchemy import text, select, insert, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
-from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car, Area, Address, ServiceCategory
+from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car, Area, Address, ServiceCategory, Service, PriceChart, service_fuel_types
 from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
 from app.auth import hashing
 from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
 from app.services.user import create_user
+from .seed_data import CHENNAI_AREAS, SERVICES_DATA, SERVICE_FUEL_TYPES_DATA, PRICE_CHART_DATA
 
 unique_id_trigger_script = """
 -- ===========================
@@ -128,43 +129,6 @@ BEGIN
     END IF;
 END $$;
 """
-
-CHENNAI_AREAS = [
-    "Adyar", "Velachery", "T Nagar", "Guindy", "Anna Nagar", "Tambaram",
-    "Perungudi", "Thoraipakkam", "Mylapore", "Kodambakkam", "Saidapet",
-    "Besant Nagar", "Egmore", "Nungambakkam", "Porur", "Sholinganallur",
-    "Pallavaram", "Chromepet", "Madipakkam", "Ambattur", "Adambakkam",
-    "Alandur", "Alapakkam", "Alwarpet", "Alwarthirunagar", "Aminjikarai",
-    "Annamalai Nagar", "Arumbakkam", "Avadi", "Ayanavaram", "Ayappakkam",
-    "Basin Bridge", "Broadway", "Chetpet", "Choolaimedu", "Defence Colony",
-    "Egatoor", "ECR", "Gerugambakkam", "Gopalapuram", "Hastinapuram",
-    "Injambakkam", "Irumbuliyur", "Kadaperi", "Kaikondrahalli", "Keelkattalai",
-    "Kottivakkam", "Kovilambakkam", "Maduravoyal", "Mambakkam", "Mambalam",
-    "Manali", "Manali New Town", "Mannurpet", "Mangadu", "MGR Garden",
-    "MGR Nagar", "Mogappair", "Mowlivakkam", "Mugalivakkam", "Nandambakkam",
-    "Nanganallur", "Neelankarai", "Nesapakkam", "Nolambur", "Otteri",
-    "Pallikaranai", "Pammal", "Pazhavanthangal", "Peerkankaranai",
-    "Perungalathur", "Puzhal", "Red Hills", "Ramapuram", "Saligramam",
-    "Selaiyur", "Selavoyal", "Sembiam", "Singaperumalkoil", "Thirumazhisai",
-    "Thirumullaivayal", "Thiruverkadu", "Thiruninravur", "Urapakkam",
-    "Valasaravakkam", "Vadapalani", "Virugambakkam", "Washermanpet",
-    "Royapuram", "Vepery", "Teynampet", "Triplicane", "Royapettah",
-    "Chepauk", "Purasaiwakkam", "Vyasarpadi", "Perambur", "Vandalur",
-    "Medavakkam", "Navalur", "Karapakkam", "Kandanchavadi", "Palavakkam",
-    "Okkiyam Thoraipakkam", "Semmenchery", "Uthandi", "Kelambakkam",
-    "Tiruvanmiyur", "West Mambalam", "Kotturpuram", "Mandaveli",
-    "Santhome", "Chintadripet", "Korratur", "Villivakkam", "Tiruvottiyur",
-    "Ennore", "Minjur", "Madhavaram", "Periyar Nagar", "Kolathur", "Washermanpet",
-    "Egmore", "Choolai", "Aminjikarai", "Arumbakkam", "CIT Nagar", "Nandanam",
-    "Ashok Nagar", "KK Nagar", "Virugambakkam", "Valasaravakkam", "Kattupakkam",
-    "Iyyappanthangal", "Porur", "Gerugambakkam", "Mugalivakkam", "Manapakkam",
-    "Ramapuram", "Ekkatuthangal", "Jafferkhanpet", "Saidapet", "Guindy",
-    "Little Mount", "St. Thomas Mount", "Meenambakkam", "Nanganallur",
-    "Pazhavanthangal", "Pammal", "Anakaputhur", "Chitlapakkam", "Selaiyur",
-    "Tambaram Sanatorium", "Tambaram East", "Tambaram West", "Irumbuliyur",
-    "Mudichur", "Perungalathur", "Peerkankaranai", "Vandalur", "Urapakkam",
-    "Guduvanchery", "Singaperumalkoil", "Maraimalai Nagar"
-]
 
 async def init_custom_triggers(db: Session):
     """Create triggers and sequences"""
@@ -304,54 +268,54 @@ async def seed_addresses(db: Session):
         area_count = result.scalar()
 
         if area_count == 0:
-            areas = [Area(name=name) for name in CHENNAI_AREAS]
+            areas = [Area(name=area[0], pincode=area[1]) for area in CHENNAI_AREAS]
             db.add_all(areas)
             await db.commit()
             print(f"Seeded {len(areas)} areas successfully!")
         else:
             print("Areas already exist, skipping seeding.")
 
-        # Fetch two customers (Surya & Rahul)
-        result = await db.execute(
-            select(Customer).where(Customer.email.in_(["surya@gmail.com", "rahul@gmail.com"]))
-        )
-        customers = result.scalars().all()
-
-        if not customers:
-            print("No customers found. Please seed users first.")
-            return
-
-        # Fetch two random areas to assign addresses
-        result = await db.execute(select(Area).limit(2))
-        areas = result.scalars().all()
-
-        if len(areas) < 2:
-            print("Not enough areas to assign addresses.")
-            return
-
-        # Create sample addresses
-        addresses = [
-            Address(
-                customer_id=str(customers[0].id),
-                label="Home",
-                line1="23, Rajiv Gandhi Street",
-                line2="Near Velachery Railway Station",
-                area_id=areas[0].id,
-            ),
-            Address(
-                customer_id=str(customers[1].id),
-                label="Home",
-                line1="17, Anna Salai",
-                line2="Opposite Express Avenue",
-                area_id=areas[1].id,
-            )
-        ]
 
         # Insert only if no addresses exist
         result = await db.execute(select(func.count()).select_from(Address))
         address_count = result.scalar()
 
         if address_count == 0:
+            # Fetch two customers (Surya & Rahul)
+            result = await db.execute(
+                select(Customer).where(Customer.email.in_(["surya@gmail.com", "rahul@gmail.com"]))
+            )
+            customers = result.scalars().all()
+
+            if not customers:
+                print("No customers found. Please seed users first.")
+                return
+
+            # Fetch two random areas to assign addresses
+            result = await db.execute(select(Area).limit(2))
+            areas = result.scalars().all()
+
+            if len(areas) < 2:
+                print("Not enough areas to assign addresses.")
+                return
+
+            # Create sample addresses
+            addresses = [
+                Address(
+                    customer_id=str(customers[0].id),
+                    label="Home",
+                    line1="23, Rajiv Gandhi Street",
+                    line2="Near Velachery Railway Station",
+                    area_id=areas[0].id,
+                ),
+                Address(
+                    customer_id=str(customers[1].id),
+                    label="Home",
+                    line1="17, Anna Salai",
+                    line2="Opposite Express Avenue",
+                    area_id=areas[1].id,
+                )
+            ]
             db.add_all(addresses)
             await db.commit()
             print("Addresses seeded successfully!")
@@ -595,6 +559,128 @@ async def seed_service_categories(db: Session):
         await db.rollback()
         print(f"Error seeding service categories: {e}")
 
+async def seed_service_fuel_types(db: Session):
+    """Seed the many-to-many relationship between services and fuel types"""
+    try:
+        # Check if service_fuel_types already exist
+        result = await db.execute(select(func.count()).select_from(service_fuel_types))
+        count = result.scalar()
+        
+        if count == 0:
+            # Prepare bulk insert data
+            fuel_type_mappings = []
+            for service_id, fuel_type_ids in SERVICE_FUEL_TYPES_DATA.items():
+                for fuel_type_id in fuel_type_ids:
+                    fuel_type_mappings.append({
+                        "service_id": service_id,
+                        "fuel_type_id": fuel_type_id
+                    })
+            
+            # Bulk insert all mappings
+            await db.execute(insert(service_fuel_types), fuel_type_mappings)
+            await db.commit()
+            print(f"Service-fuel-type seeded successfully!")
+        else:
+            print("Service-fuel type relationships already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding service-fuel types: {e}")
+        raise
+
+
+async def seed_price_chart(db: Session):
+    """Seed the price chart for all services across all car classes"""
+    try:
+        # Check if price_chart already exists
+        result = await db.execute(select(func.count()).select_from(PriceChart))
+        count = result.scalar()
+        
+        if count == 0:
+            # Prepare bulk insert data 
+            price_entries = []
+            for service_price in PRICE_CHART_DATA:
+                service_id = service_price["service_id"]
+                prices = service_price["prices"]
+                
+                for car_class_id, price in prices.items():
+                    price_entries.append({
+                        "service_id": service_id,
+                        "car_class_id": car_class_id,
+                        "price": price
+                    })
+            
+            # Bulk insert all price entries
+            price_objects = [
+                PriceChart(
+                    service_id=entry["service_id"],
+                    car_class_id=entry["car_class_id"],
+                    price=entry["price"]
+                )
+                for entry in price_entries
+            ]
+            
+            db.add_all(price_objects)
+            await db.commit()
+            print(f"Price chart seeded successfully!")
+        else:
+            print("Price chart already exists, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding price chart: {e}")
+        raise
+
+async def seed_services(db: Session):
+    try:
+        # Check if services already exist
+        result = await db.execute(select(func.count()).select_from(Service))
+        service_count = result.scalar()
+        
+        if service_count == 0:
+            # Create Service objects from the data
+            services = []
+            for service_data in SERVICES_DATA:
+                service = Service(
+                    title=service_data["title"],
+                    description=service_data["description"],
+                    category_id=service_data["category_id"],
+                    works=service_data["works"],
+                    warranty_kms=service_data["warranty_kms"],
+                    warranty_months=service_data["warranty_months"],
+                    time_hrs=service_data["time_hrs"],
+                    difficulty=service_data["difficulty"],
+                    images=service_data["images"]
+                )
+                services.append(service)
+            
+            db.add_all(services)
+            await db.commit()
+            print(f"Services seeded successfully!")
+        else:
+            print("Services already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding services: {e}")
+        raise
+
+async def seed_all_service_data(db: Session):
+    """Master function to seed all service-related data in correct order"""
+    print("Starting service data seeding...")
+    
+    # Then seed services
+    await seed_services(db)
+    
+    # Then seed service-fuel type relationships
+    await seed_service_fuel_types(db)
+    
+    # Finally seed price chart
+    await seed_price_chart(db)
+    
+    print("All service data seeded successfully!")
+    
+
 async def run_seed():
     """Run all startup DB seeding logic"""
     async with engine.begin() as conn:
@@ -609,6 +695,7 @@ async def run_seed():
             await seed_addresses(db)
             await seed_car_utils(db)
             await seed_service_categories(db)
+            await seed_all_service_data(db)
 
         finally:
             await db.close()

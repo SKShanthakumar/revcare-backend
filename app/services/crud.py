@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
@@ -76,7 +76,6 @@ async def create_record(db: Session, data: dict, model):
         return record
     except IntegrityError as e:
         await db.rollback()
-        print(e)
         raise HTTPException(status_code=400, detail="Invalid foreign key reference")
 
 async def update_record_by_primary_key(db: Session, id: str, new_data: dict, model):
@@ -101,9 +100,6 @@ async def delete_record_by_primary_key(db: Session, pk, model):
     await db.commit()
 
     return {"detail": f"{model.__name__} deleted successfully."}
-
-from sqlalchemy import select, and_
-from fastapi import HTTPException
 
 async def update_record_by_composite_key(db: Session, pk: dict, new_data: dict, model):
     """

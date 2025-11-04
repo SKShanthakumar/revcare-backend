@@ -78,6 +78,10 @@ async def get_services_by_category_id(category_id: Optional[int] = None, db: Ses
     filters = {"category_id": category_id} if category_id else None
     return await crud.get_all_records(db, Service, filters=filters)
 
+@router.get("/{service_id}", response_model=ServiceResponse)
+async def get_services_by_service_id(service_id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:SERVICES", "READ:PRICE_CHART"])):
+    return await crud.get_record_by_primary_key(db, service_id, Service)
+
 @router.post("/", response_model=ServiceResponse)
 async def create_service(service: ServiceCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:SERVICES", "WRITE:PRICE_CHART"])):
     return await car_service.create_service(db, service.model_dump())

@@ -4,6 +4,7 @@ from typing import Optional
 class AreaBase(BaseModel):
     """Base schema for Area"""
     name: str = Field(..., min_length=1, max_length=100, description="Name of the area")
+    pincode: int = Field(..., ge=100000, le=999999, description="Pincode of the area")
 
     @field_validator('name')
     def validate_name(cls, v: str) -> str:
@@ -31,6 +32,7 @@ class AreaResponse(AreaBase):
 
 class AreaUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100, description="Name of the area")
+    pincode: Optional[int] = Field(None, ge=100000, le=999999, description="Pincode of the area")
 
     @field_validator('name')
     def validate_name(cls, v: str) -> str:
