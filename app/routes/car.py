@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Security, HTTPException
+from fastapi import APIRouter, Depends, Security
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession as Session
-from typing import List
+from typing import List, Optional
 from app.database.dependencies import get_postgres_db
 from app.models import Car, CarClass, CustomerCar, Manufacturer, FuelType
 from app.schemas import CustomerCarResponse, CustomerCarCreate, CustomerCarUpdate, CarCreate, CarResponse, CarUpdate, CarClassResponse, CarClassCreate, CarClassUpdate, FuelTypeCreate, FuelTypeResponse, FuelTypeUpdate, ManufacturerCreate, ManufacturerResponse, ManufacturerUpdate
-from app.services import crud
+from app.services import crud, car as car_service
 from app.auth.dependencies import validate_token
 
 router = APIRouter()
@@ -88,8 +88,8 @@ async def delete_manufacturer_by_id(id: int, db: Session = Depends(get_postgres_
 
 # customer car routes
 @router.get("/", response_model=List[CustomerCarResponse])
-async def get_customer_cars(db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:CUSTOMER_CARS"])):
-    return await crud.get_all_records(db, CustomerCar)
+async def get_customer_cars(customer_id: Optional[str] = None, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:CUSTOMER_CARS"])):
+    return await car_service.get_customer_cars(db, payload, customer_id)
 
 @router.get("/{id}", response_model=CustomerCarResponse)
 async def get_customer_car_by_id(id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:CUSTOMER_CARS"])):
@@ -97,17 +97,12 @@ async def get_customer_car_by_id(id: int, db: Session = Depends(get_postgres_db)
 
 @router.post("/", response_model=CustomerCarResponse)
 async def create_customer_car(customer_car: CustomerCarCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:CUSTOMER_CARS"])):
-    return await crud.create_record(db, customer_car.model_dump(), CustomerCar)
+    return await car_service.create_customer_car(customer_car, db, payload)
 
 @router.put("/{id}", response_model=CustomerCarResponse)
 async def update_customer_car_by_id(id: int, customer_car: CustomerCarUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:CUSTOMER_CARS"])):
-    if payload.get("role") == 3 and payload.get("user_id") != id:
-        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access cars of other customers.")
-    return await crud.update_record_by_primary_key(db, id, customer_car.model_dump(exclude_none=True), CustomerCar)
+    return await car_service.update_customer_car_by_id(id, customer_car, db, payload)
 
 @router.delete("/{id}", response_class=JSONResponse)
 async def delete_customer_car_by_id(id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:CUSTOMER_CARS"])):
-    if payload.get("role") == 3 and payload.get("user_id") != id:
-        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access cars of other customers.")
-    message = await crud.delete_record_by_primary_key(db, id, CustomerCar)
-    return JSONResponse(content=message)
+    return await car_service.delete_customer_car_by_id(id, db, payload)

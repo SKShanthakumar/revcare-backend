@@ -1,11 +1,12 @@
 from fastapi import HTTPException
-from sqlalchemy import select, delete
+from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
 from app.auth import hashing
 from app.models import Customer, User, Role, Admin, Mechanic, ServiceCategory
-from app.schemas import CustomerCreate, AdminCreate, MechanicCreate, MechanicUpdate, MechanicUpdateWithForeignData
-from app.utilities.data_processing import filter_data_for_model
+from app.schemas import CustomerCreate, CustomerUpdate, AdminCreate, MechanicCreate, MechanicUpdate, MechanicUpdateWithForeignData
+from app.utilities.data_utils import filter_data_for_model
 from app.services import crud
 
 async def create_user(db: Session, user: CustomerCreate | AdminCreate, model: Customer | Admin):
@@ -55,7 +56,22 @@ async def create_user(db: Session, user: CustomerCreate | AdminCreate, model: Cu
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-    
+
+async def get_mechanics(db: Session, payload: dict, mechanic_id: str | None):
+    filters = None
+    if mechanic_id is not None:
+        if payload.get("role") == 2 and (mechanic_id != payload.get("user_id")):
+            raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other mechanics.")
+        
+        filters = {"id": mechanic_id}
+    else:
+        user_id = payload.get("user_id")
+        if user_id.startswith("MEC"):
+            filters = {"id": user_id}
+
+    return await crud.get_all_records(db, Mechanic, filters=filters)
+
+
 async def create_mechanic(db: Session, user: MechanicCreate):
     phone = user.phone
     hashed_password = hashing.hash_password(user.password)
@@ -104,7 +120,10 @@ async def create_mechanic(db: Session, user: MechanicCreate):
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
     
 
-async def update_mechanic(db: Session, mechanic_id: int, update_schema: MechanicUpdateWithForeignData):
+async def update_mechanic(db: Session, mechanic_id: int, update_schema: MechanicUpdateWithForeignData, payload: dict):
+    if payload.get("role") == 2 and payload.get("user_id") != mechanic_id:
+        raise HTTPException(status_code=403, detail="Operation not permitted.")
+    
     mechanic_base_schema = MechanicUpdate(**update_schema.model_dump(exclude_none=True))
     new_data = mechanic_base_schema.model_dump(exclude_none=True)
 
@@ -138,3 +157,41 @@ async def update_mechanic(db: Session, mechanic_id: int, update_schema: Mechanic
     await db.refresh(mechanic)
 
     return mechanic
+
+
+async def delete_mechanic(id: str, db: Session, payload: dict):
+    if payload.get("role") == 2 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other mechanics.")
+    
+    message = await crud.delete_record_by_primary_key(db, id.strip(), Mechanic)
+    return JSONResponse(content=message)
+
+
+async def get_customers(db: Session, payload: dict, customer_id: str | None):
+    filters = None
+    if customer_id is not None:
+        if payload.get("role") == 3 and (customer_id != payload.get("user_id")):
+            raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
+        
+        filters = {"id": customer_id}
+    else:
+        user_id = payload.get("user_id")
+        if user_id.startswith("CST"):
+            filters = {"id": user_id}
+
+    return await crud.get_all_records(db, Customer, filters=filters)
+
+
+async def update_customer(id: str, customer_data: CustomerUpdate, db: Session, payload: dict):
+    if payload.get("role") == 3 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
+    
+    return await crud.update_record_by_primary_key(db, id.strip(), customer_data.model_dump(exclude_none=True), Customer)
+
+
+async def delete_customer(id: str, db: Session, payload: dict):
+    if payload.get("role") == 3 and payload.get("user_id") != id:
+        raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
+    
+    message = await crud.delete_record_by_primary_key(db, id.strip(), Customer)
+    return JSONResponse(content=message)

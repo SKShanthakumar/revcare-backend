@@ -54,7 +54,6 @@ class MechanicResponse(MechanicBase):
 
 class MechanicUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1)
-    email: Optional[EmailStr] = None
     pickup_drop: Optional[bool] = None
     analysis: Optional[bool] = None
     dob: Optional[date] = None

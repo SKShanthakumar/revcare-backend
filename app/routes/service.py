@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Security, HTTPException
+from fastapi import APIRouter, Depends, Security
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from typing import List, Optional
@@ -36,40 +36,15 @@ async def get_reviews_for_service(service_id: int, db: Session = Depends(get_pos
 
 @router.post("/review", response_model=ServiceReviewResponse)
 async def create_review(review: ServiceReviewCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:SERVICE_REVIEWS"])):
-    customer_id = payload.get("user_id")
-    if not customer_id.startswith("CST"):
-        raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can add reviews")
-    
-    data = review.model_dump()
-    data["customer_id"] = customer_id
-    return await crud.create_record(db, data, ServiceReview)
+    return await car_service.create_review(review, db, payload)
 
 @router.put("/review/{service_id}", response_model=ServiceReviewResponse)
 async def update_review_by_id(service_id: int, review: ServiceReviewUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:SERVICE_REVIEWS"])):
-    customer_id = payload.get("user_id")
-    if not customer_id.startswith("CST"):
-        raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can update reviews")
-    
-    # build composite primary key
-    pk = {
-        "customer_id": customer_id,
-        "service_id": service_id
-    }
-    return await crud.update_record_by_composite_key(db, pk, review.model_dump(exclude_none=True), ServiceReview)
+    return await car_service.update_review_by_id(service_id, review, db, payload)
 
 @router.delete("/review/{service_id}", response_class=JSONResponse)
 async def delete_review_by_id(service_id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:SERVICE_REVIEWS"])):
-    customer_id = payload.get("user_id")
-    if not customer_id.startswith("CST"):
-        raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can delete reviews")
-    
-    # build composite primary key
-    pk = {
-        "customer_id": customer_id,
-        "service_id": service_id
-    }
-    message = await crud.delete_record_by_composite_key(db, pk, ServiceReview)
-    return JSONResponse(content=message)
+    return await car_service.delete_review_by_id(service_id, db, payload)
 
 
 # service routes

@@ -1,5 +1,12 @@
+from sqlalchemy.ext.asyncio import AsyncSession as Session
+from sqlalchemy import select
 from app.schemas import PriceChartResponseWithService
-from app.models import Service
+from app.models import Service, Role
+
+async def get_role_id(db: Session, role: str):
+    result = await db.execute(select(Role).where(Role.role_name.ilike(role)))
+    role_obj = result.scalar_one_or_none()
+    return role_obj.id
 
 def filter_data_for_model(model, data: dict):
     valid_keys = {c.name for c in model.__table__.columns}

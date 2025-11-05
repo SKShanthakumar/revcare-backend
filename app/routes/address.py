@@ -32,30 +32,11 @@ async def delete_area_by_id(id: int, db: Session = Depends(get_postgres_db), pay
 # address routes
 @router.get("/", response_model=List[AddressResponse])
 async def get_customer_addresses(customer_id: Optional[str] = None, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:ADDRESSES"])):
-    filters = None
-    if customer_id is not None:
-        if payload.get("role") == 3 and (customer_id != payload.get("user_id")):
-            raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access addresses of other customers.")
-        
-        filters = {"customer_id": customer_id}
-    else:
-        user_id = payload.get("user_id")
-        if user_id.startswith("CST"):
-            filters = {"customer_id": user_id}
-
-    return await crud.get_all_records(db, Address, filters=filters)
+    return await address_service.get_customer_address(db, payload, customer_id)
 
 @router.post("/", response_model=AddressResponse)
 async def create_address(address: AddressCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:ADDRESSES"])):
-    customer_id = payload.get("user_id")
-    
-    if not customer_id.startswith("CST"):
-        raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can add addresses")
-    
-    address_dict = address.model_dump()
-    address_dict["customer_id"] = customer_id
-
-    return await crud.create_record(db, address_dict, Address)
+    return await address_service.create_customer_address(db, payload, address)
 
 @router.put("/{id}", response_model=AddressResponse)
 async def update_address_by_id(id: int, address: AddressUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:ADDRESSES"])):
