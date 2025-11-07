@@ -16,3 +16,4 @@ from .service import *
 from .assignment_type import *
 from .status import *
 from .timeslot import *
+from .bookings import *

@@ -1606,3 +1606,30 @@ PRICE_CHART_DATA = [
     {"service_id": 57, "prices": {1: 4000, 2: 5000, 3: 7000, 4: 4500, 5: 5800, 6: 8000, 7: 5500, 8: 7000, 9: 10000, 10: 5000, 11: 6500, 12: 9300, 13: 7500, 14: 10500, 15: 8000, 16: 11500, 17: 5300, 18: 6800, 19: 9700, 20: 5800, 21: 7500}},
     {"service_id": 58, "prices": {1: 2500, 2: 3200, 3: 4500, 4: 2800, 5: 3600, 6: 5000, 7: 3500, 8: 4500, 9: 6500, 10: 3200, 11: 4200, 12: 6000, 13: 4800, 14: 6800, 15: 5000, 16: 7200, 17: 3400, 18: 4400, 19: 6300, 20: 3700, 21: 4800}},
 ]
+
+
+# Booking statuses
+BOOKING_STATUSES = [
+    "booked",
+    "pickup",
+    "received",
+    "analysis",
+    "analysed",
+    "in-progress",
+    "completed",
+    "out for delivery",
+    "delivered",
+    "cancelled",
+]
+
+# Additional statuses for assignments and services
+OTHER_STATUSES = [
+    "assigned",    # for booking_assignment
+    "confirmed",   # for booked_services
+    "rejected",    # for booked_services
+    "pending",     # for payment
+    "success",     # for payment
+    "failed"       # for payment
+]
+
+ALL_STATUSES = BOOKING_STATUSES + OTHER_STATUSES

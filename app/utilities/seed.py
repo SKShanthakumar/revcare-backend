@@ -1,16 +1,21 @@
-from datetime import date
+from datetime import date, time
 import traceback
 from sqlalchemy import text, select, insert, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.database import Base, engine
 from app.database.dependencies import get_postgres_db
-from app.models import Role, Permission, Admin, Mechanic, Customer, User, FuelType, Manufacturer, CarClass, Car, Area, Address, ServiceCategory, Service, PriceChart, service_fuel_types
+from app.models import (
+    Role, Permission, Admin, Mechanic, Customer, User,
+    FuelType, Manufacturer, CarClass, Car, Area, Address,
+    ServiceCategory, Service, PriceChart, service_fuel_types,
+    Status, AssignmentType, Timeslot, PaymentMethod
+    )
 from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
 from app.auth import hashing
 from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
 from app.services.user import create_user
-from .seed_data import CHENNAI_AREAS, SERVICES_DATA, SERVICE_FUEL_TYPES_DATA, PRICE_CHART_DATA
+from .seed_data import CHENNAI_AREAS, SERVICES_DATA, SERVICE_FUEL_TYPES_DATA, PRICE_CHART_DATA, ALL_STATUSES
 
 unique_id_trigger_script = """
 -- ===========================
@@ -589,7 +594,6 @@ async def seed_service_fuel_types(db: Session):
         print(f"Error seeding service-fuel types: {e}")
         raise
 
-
 async def seed_price_chart(db: Session):
     """Seed the price chart for all services across all car classes"""
     try:
@@ -680,7 +684,106 @@ async def seed_all_service_data(db: Session):
     await seed_price_chart(db)
     
     print("All service data seeded successfully!")
+
+async def seed_statuses(db: Session):
+    """Seed all required statuses for bookings workflow"""
+    try:
+        result = await db.execute(select(Status))
+        status_objs = result.scalars().all()
+        
+        if len(status_objs) < len(ALL_STATUSES):
+            existing_statuses = { status.name for status in status_objs }
+            statuses = [Status(name=status) for status in ALL_STATUSES if status not in existing_statuses]
+            
+            db.add_all(statuses)
+            await db.commit()
+            print(f"Statuses seeded successfully!")
+        else:
+            print("Statuses already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding status data: {e}")
+
+async def seed_assignment_types(db: Session):
+    """Seed all required assignment types for mechanic assignments"""
+    try:
+        result = await db.execute(select(func.count()).select_from(AssignmentType))
+        type_count = result.scalar()
+        
+        if type_count == 0:
+            assignment_types = [
+                AssignmentType(name="pickup"),
+                AssignmentType(name="drop"),
+                AssignmentType(name="service"),
+                AssignmentType(name="analysis"),
+            ]
+            
+            db.add_all(assignment_types)
+            await db.commit()
+            print(f"Assignment types seeded successfully!")
+        else:
+            print("Assignment types already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding assignment type data: {e}")
+
+async def seed_timeslots(db: Session):
+    """Seed default timeslots for pickup and drop scheduling"""
+    try:
+        result = await db.execute(select(func.count()).select_from(Timeslot))
+        slot_count = result.scalar()
+        
+        if slot_count == 0:
+            timeslots = [
+                Timeslot(name="Morning", start_time=time(8, 0), end_time=time(12, 0)),
+                Timeslot(name="Afternoon", start_time=time(13, 0), end_time=time(16, 0)),
+                Timeslot(name="Evening", start_time=time(16, 0), end_time=time(19, 0)),
+                Timeslot(name="Night", start_time=time(19, 0), end_time=time(22, 0)),
+            ]
+            
+            db.add_all(timeslots)
+            await db.commit()
+            print(f"Timeslots seeded successfully!")
+        else:
+            print("Timeslots already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding timeslot data: {e}")
+
+async def seed_booking_data(db: Session):
+    """Master function to seed all booking-related data"""
+    print("\nStarting booking data seeding...")
     
+    await seed_statuses(db)
+    await seed_assignment_types(db)
+    await seed_timeslots(db)
+    
+    print("All booking data seeded successfully!")
+
+async def seed_payment_methods(db: Session):
+    """Seed payment methods online / offline"""
+    try:
+        result = await db.execute(select(func.count()).select_from(PaymentMethod))
+        count = result.scalar()
+        
+        if count == 0:
+            timeslots = [
+                PaymentMethod(name="online"),
+                PaymentMethod(name="offline")
+            ]
+            
+            db.add_all(timeslots)
+            await db.commit()
+            print(f"Payment methods seeded successfully!")
+        else:
+            print("Payment methods already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding timeslot data: {e}")
 
 async def run_seed():
     """Run all startup DB seeding logic"""
@@ -697,6 +800,8 @@ async def run_seed():
             await seed_car_utils(db)
             await seed_service_categories(db)
             await seed_all_service_data(db)
+            await seed_booking_data(db)
+            await seed_payment_methods(db)
 
         finally:
             await db.close()

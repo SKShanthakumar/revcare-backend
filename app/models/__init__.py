@@ -28,3 +28,13 @@ from .favourite import *
 from .assignment_type import *
 from .timeslot import *
 from .status import *
+from .booking import *
+from .booked_service import *
+from .booking_analysis import *
+from .booking_assignment import *
+from .booking_progress import *
+from .booking_recommendation import *
+from .offline_payment import *
+from .online_payment import *
+from .payment_method import *
+from .service_selection_stage import *

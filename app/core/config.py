@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     hash_algorithm: str
     access_token_expire_minutes: int
     refresh_token_expire_days: int
+    razorpay_key_id: str
+    razorpay_key_secret: str
 
     class Config:
         env_file = str(PROJECT_ROOT / ".env")

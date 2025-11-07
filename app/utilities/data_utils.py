@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession as Session
+from sqlalchemy.inspection import inspect
 from sqlalchemy import select
 from app.schemas import PriceChartResponseWithService
 from app.models import Service, Role
@@ -39,3 +40,7 @@ def serialize_service_response(service: Service):
     }
 
     return response
+
+
+def model_to_dict(obj):
+    return {c.key: getattr(obj, c.key) for c in inspect(obj).mapper.column_attrs}

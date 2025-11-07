@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm Services & Pay</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <h2>Confirm Services for Booking #{{ booking_id }}</h2>
+  
+  <form id="confirmForm">
+    <label>Enter Service IDs (comma-separated):</label><br>
+    <input type="text" id="serviceIds" placeholder="e.g. 1,2,3" required />
+    <button type="submit">Confirm & Pay</button>
+  </form>
+
+  <script>
+    const form = document.getElementById("confirmForm");
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+
+      const ids = document.getElementById("serviceIds").value
+        .split(",")
+        .map(id => id.trim())
+        .filter(id => id !== "");
+
+      if (ids.length === 0) {
+        alert("Please enter at least one service ID");
+        return; 
+      }
+
+      // Step 1: Send selected service IDs to backend to create Razorpay order
+      const res = await fetch("/confirm/{{ booking_id }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ "service_ids": ids })
+      });
+
+      if (!res.ok) {
+        alert("Error creating payment order.");
+        return;
+      }
+
+      const data = await res.json();
+
+      // Step 2: Open Razorpay Checkout
+      const options = {
+        key: data.key_id,
+        amount: data.amount * 100, // Razorpay expects amount in paise
+        currency: "INR",
+        name: "RevCare",
+        description: "Booking Payment",
+        order_id: data.order_id,
+        callback_url: "/verify"
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+    };
+  </script>
+</body>
+</html>

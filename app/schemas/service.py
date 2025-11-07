@@ -97,6 +97,56 @@ class ServiceResponse(ServiceBase):
         from_attributes = True
 
 
+class ServiceInBooking(BaseModel):
+    """Schema for service response"""
+    id: int = Field(..., description="Unique identifier for the service")
+    title: str = Field(..., min_length=1, max_length=200, description="Name of the service")
+    description: str = Field(..., max_length=1000, description="Detailed service description")
+    images: list[str] = Field(..., max_length=5, description="List of image URLs")
+    category: ServiceCategoryResponse = Field(..., description="Service category details")
+
+    @field_validator('images')
+    def validate_images(cls, v:list[str]) -> list[str]:
+        """Validate image URLs"""
+        # Remove empty strings and duplicates
+        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
+        
+        if len(v) > 5:
+            raise ValueError("Maximum 5 images allowed")
+        
+        # Basic URL validation
+        for url in v:
+            if not url.startswith(('http://', 'https://', '/')):
+                raise ValueError(f"Invalid image URL: {url}")
+            if len(url) > 500:
+                raise ValueError(f"Image URL too long: {url}")
+        
+        return v if v else None
+
+    @field_validator('title')
+    def validate_title(cls, v: str) -> str:
+        """Validate and normalize service title"""
+        v = v.strip()
+        if not v:
+            raise ValueError("Service title cannot be empty or only whitespace")
+        if len(v) < 3:
+            raise ValueError("Service title must be at least 3 characters long")
+        return v
+    
+    @field_validator('description')
+    def validate_description(cls, v: str) -> str:
+        """Validate and normalize service description"""
+        v = v.strip()
+        if not v:
+            raise ValueError("Service description cannot be empty or only whitespace")
+        if len(v.split()) < 3:
+            raise ValueError("Service description must be at least 3 words long")
+        return v
+    
+    class Config:
+        from_attributes = True
+
+
 class ServiceUpdate(BaseModel):
     """Schema for updating a service"""
     title: Optional[str] = Field(None, min_length=1, max_length=200, description="Name of the service")

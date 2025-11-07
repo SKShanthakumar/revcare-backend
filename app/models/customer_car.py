@@ -8,7 +8,7 @@ class CustomerCar(Base):
     __tablename__ = "customer_cars"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    reg_number = Column(VARCHAR, nullable=False, unique=True)
+    reg_number = Column(VARCHAR, nullable=False, unique=True, index=True)
     car_model_id = Column(Integer, ForeignKey("cars.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     customer_id = Column(VARCHAR, ForeignKey("customers.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
