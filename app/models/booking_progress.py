@@ -1,4 +1,4 @@
-from sqlalchemy import Column, VARCHAR, TIMESTAMP, ForeignKey, Integer, Boolean, Text, ARRAY
+from sqlalchemy import Column, VARCHAR, TIMESTAMP, ForeignKey, Integer, Boolean, Text, ARRAY, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -14,6 +14,7 @@ class BookingProgress(Base):
     images = Column(ARRAY(VARCHAR), nullable=False)
     status_id = Column(Integer, ForeignKey("status.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     validated = Column(Boolean, default=False, nullable=False)
+    completed_service_ids = Column(ARRAY(Integer), nullable=False, server_default=text("'{}'"))
     created_at = Column(TIMESTAMP, server_default=func.now())
     
     # Relationships

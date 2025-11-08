@@ -69,16 +69,6 @@ async def get_admin_bookings_dashboard(
     return await booking_service.get_admin_dashboard_bookings(db, payload, status_id, action_required)
 
 
-@router.get("/admin/{booking_id}/services", response_model=List[BookedServiceResponse])
-async def get_booked_services(
-    booking_id: int,
-    db: Session = Depends(get_postgres_db),
-    payload = Security(validate_token, scopes=["READ:BOOKED_SERVICES"])
-):
-    """Get all services for a booking"""
-    return await booking_service.get_booked_services(db, booking_id)
-
-
 @router.post("/admin/assign", response_model=MechanicAssignmentResponse)
 async def assign_mechanic(
     assignment: MechanicAssignmentCreate,

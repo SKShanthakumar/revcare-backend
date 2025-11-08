@@ -1,4 +1,4 @@
-from sqlalchemy import Column, VARCHAR, TIMESTAMP, ForeignKey, Integer
+from sqlalchemy import Column, VARCHAR, TIMESTAMP, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -12,6 +12,7 @@ class BookingAssignment(Base):
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     assignment_type_id = Column(Integer, ForeignKey("assignment_types.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
     status_id = Column(Integer, ForeignKey("status.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    note = Column(Text)
     assigned_at = Column(TIMESTAMP, server_default=func.now())
     
     # Relationships

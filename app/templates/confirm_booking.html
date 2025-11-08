@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm Services & Pay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-4">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <h2 class="text-3xl font-bold text-gray-800 mb-2">Confirm Services</h2>
+      <p class="text-gray-600">Booking #<span class="font-semibold text-indigo-600">{{ booking_id }}</span></p>
+    </div>
+
+    <form id="confirmForm" class="space-y-6">
+      <div>
+        <label for="serviceIds" class="block text-sm font-medium text-gray-700 mb-2">
+          Select Service IDs
+        </label>
+        <input type="text" id="serviceIds" placeholder="e.g. 1, 2, 3" required
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 outline-none" />
+        <p class="mt-2 text-sm text-gray-500">Enter comma-separated service IDs</p>
+      </div>
+
+      <button type="submit"
+        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition duration-200 flex items-center justify-center space-x-2">
+        <span>Confirm & Pay</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+        </svg>
+      </button>
+    </form>
+
+    <div class="mt-6 pt-6 border-t border-gray-200 flex items-center justify-center space-x-2 text-sm text-gray-500">
+      <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd"
+          d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+          clip-rule="evenodd"></path>
+      </svg>
+      <span>Secure payment powered by Razorpay</span>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("confirmForm");
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const button = e.target.querySelector('button[type="submit"]');
+      const originalContent = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+      const ids = document.getElementById("serviceIds").value
+        .split(",")
+        .map(id => id.trim())
+        .filter(id => id !== "");
+      if (ids.length === 0) {
+        alert("Please enter at least one service ID");
+        button.disabled = false;
+        button.innerHTML = originalContent;
+        return;
+      }
+      try {
+        // Step 1: Send selected service IDs to backend to create Razorpay order
+        const res = await fetch("/api/v1/bookings/{{ booking_id }}/confirm-services", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer {{ access_token }}`
+          },
+          body: JSON.stringify({
+            service_ids: ids.map(Number),
+            payment_method_id: 1
+          })
+        });
+        if (!res.ok) {
+          alert("Error creating payment order.");
+          button.disabled = false;
+          button.innerHTML = originalContent;
+          return;
+        }
+        const data = await res.json();
+        // Step 2: Open Razorpay Checkout
+        const options = {
+          key: "{{ key_id }}",
+          amount: data.amount,
+          currency: "INR",
+          name: "RevCare",
+          description: "Booking Payment",
+          order_id: data.order_id,
+          callback_url: "/api/v1/payment/verify"
+        };
+        const rzp = new Razorpay(options);
+        rzp.open();
+        button.disabled = false;
+        button.innerHTML = originalContent;
+      } catch (error) {
+        alert("An error occurred. Please try again.");
+        button.disabled = false;
+        button.innerHTML = originalContent;
+      }
+    };
+  </script>
+</body>
+
+</html>

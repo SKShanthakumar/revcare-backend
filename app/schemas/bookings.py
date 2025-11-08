@@ -34,6 +34,10 @@ class BookingCreate(BaseModel):
             raise ValueError("Pickup date cannot be in the past.")
         if self.pickup_date >= self.drop_date:
             raise ValueError("Pickup date must be earlier than drop date.")
+        
+        if len(self.service_price) == 0:
+            raise ValueError("Book atleast one service.")
+            
         return self
 
 
@@ -88,6 +92,7 @@ class MechanicAssignmentDetailedResponse(BaseModel):
     booking_id: int
     assignment_type: str
     status: str
+    note: str | None
     assigned_at: datetime
 
     class Config:
@@ -233,6 +238,9 @@ class BookingAnalysisResponse(BaseModel):
 # Customer Service Selection
 class CustomerServiceSelection(BaseModel):
     service_ids: List[int] = Field(..., description="List of service IDs to confirm (from booked_services or booking_recommendations)")
+    payment_method_id: int
+
+class CashOnDelivery(BaseModel):
     payment_method_id: int
 
 

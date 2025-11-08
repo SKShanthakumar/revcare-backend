@@ -6,33 +6,22 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from typing import Dict, Set, Optional, List
 from datetime import datetime
+from decimal import Decimal
+import math
 
 from app.models import (
     Booking, BookedService, BookingRecommendation, BookingAssignment, Car,
     BookingProgress, BookingAnalysis, Address, Status, CustomerCar, AssignmentType,
-    Mechanic, PaymentMethod, OnlinePayment, OfflinePayment, ServiceSelectionStage
+    Mechanic, PaymentMethod, OnlinePayment, OfflinePayment, ServiceSelectionStage,
+    Service, Refund
 )
 from app.schemas import (
     BookingCreate, MechanicAssignmentCreate, BookingProgressCreate,
     BookingAnalysisCreate, CustomerServiceSelection, BookingProgressUpdate,
-    BookingAnalysisUpdate
+    BookingAnalysisUpdate, CashOnDelivery
 )
 from app.services import crud, payment as payment_service
 
-
-# condensed status for customer view
-customer_status_mapping = {
-    "booked": "booked",
-    "pickup": "pickup",
-    "received": "pickup",
-    "analysis": "analysis",
-    "analysed": "analysis",
-    "in-progress": "in-progress",
-    "completed": "completed",
-    "out for delivery": "completed",
-    "delivered": "delivered",
-    "cancelled": "cancelled"
-}
 
 # Helper Functions
 async def get_status_id_by_name(db: Session, status_name: str) -> int:
@@ -112,6 +101,56 @@ async def get_booking_progress_history(db: Session, booking: Booking):
 def get_latest_progress(booking_progress_list):
     return sorted(booking_progress_list, key=lambda x: x.created_at, reverse=True)[0]
 
+def get_latest_assignment(booking_assignment_list):
+    return sorted(booking_assignment_list, key=lambda x: x.assigned_at, reverse=True)[0]
+
+
+async def cancelled_booking_returned(db: Session, booking_id: int):
+    result = await db.execute(
+        select(BookingProgress)
+        .join(BookingProgress.status)
+        .where(
+            BookingProgress.booking_id == booking_id,
+            Status.name == "cancelled"
+        )
+    )
+    cancelled_drop_update = result.scalar_one_or_none()
+    
+    return cancelled_drop_update is not None
+
+
+async def cancelled_drop_assigned(db: Session, booking_id: int):
+    result = await db.execute(
+        select(BookingAssignment)
+        .join(BookingAssignment.booking)
+        .join(Status, Booking.status)
+        .join(BookingAssignment.assignment_type)
+        .where(
+            BookingAssignment.booking_id == booking_id,
+            Status.name == "cancelled",
+            AssignmentType.name == "drop"
+        )
+    )
+    assignment_obj = result.scalar_one_or_none()
+    return assignment_obj is not None
+
+
+# get condensed status for customer view
+def get_customer_status_mapping(booking: Booking):
+    latest_update = get_latest_progress(booking.booking_progress)
+    return {
+        "booked": "booked",
+        "pickup": "pickup",
+        "received": "pickup",
+        "analysis": "analysis",
+        "analysed": "analysis",
+        "in-progress": "in-progress",
+        "completed": "completed",
+        "out for delivery": "completed",
+        "delivered": "delivered" if latest_update.validated else "completed",
+        "cancelled": "cancelled"
+    }
+
 
 async def confirm_selected_services(db: Session, booking: Booking, selected_ids: Set[int], confirmed_status_id: int, rejected_status_id: int) -> None:
     """
@@ -154,6 +193,48 @@ def check_all_booked_services_completed(booked_services: List[BookedService], co
             completed = completed and service.completed
     return completed
 
+
+async def add_cancellation_fee(db: Session, booking: Booking, cancellation_fee: float):
+    pending_status_id = await get_status_id_by_name(db, "pending")
+    result = await db.execute(select(PaymentMethod).where(PaymentMethod.name.ilike("offline")))
+    payment_method_obj = result.scalar_one_or_none()
+
+    gst_rate = 0.18
+    gst = cancellation_fee * gst_rate
+
+    payment = OfflinePayment(
+        booking_id = booking.id,
+        status_id = pending_status_id,
+        amount = cancellation_fee,
+        gst = gst,
+    )
+    db.add(payment)
+
+    booking.payment_method_id = payment_method_obj.id
+
+    await db.flush()
+
+
+async def offline_payment_completed(db: Session, booking_id: int):
+    result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == booking_id))
+    booking_payments = result.scalars().all()
+    for payment in booking_payments:
+        if payment.status.name.lower() == "success":
+            return True
+    return False
+
+
+async def get_online_payment_status(db: Session, booking_id: int):
+    result = await db.execute(select(OnlinePayment).where(OnlinePayment.booking_id == booking_id))
+    booking_payments = result.scalars().all()
+    for payment in booking_payments:
+        if payment.status.name.lower() == "success":
+            amount_paid = payment.amount + payment.gst
+            return True, amount_paid
+    return False, -1
+
+
+
 # common functions
 async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
     """Get detailed booking by ID"""
@@ -185,11 +266,15 @@ async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
     booked_services = [bs.service for bs in booking.booked_services]
     total_est = sum(bs.est_price for bs in booking.booked_services)
     total_final = sum(bs.price for bs in booking.booked_services if bs.price and bs.status_id == confirmed_status_id) or None
+    if total_final is not None:
+        gst_rate = Decimal('0.18') # 18% GST
+        gst_amount = total_final * gst_rate
+        total_final += gst_amount
     booking_progress = await get_booking_progress_history(db, booking)
 
     response = {
         "id": booking.id,
-        "status": customer_status_mapping.get(booking.status.name.lower()) if payload.get("role") == 3 else booking.status.name,
+        "status": get_customer_status_mapping(booking).get(booking.status.name.lower()) if payload.get("role") == 3 else booking.status.name,
         "customer": booking.customer,
         "car": {
             "manufacturer": booking.customer_car.car.manufacturer.name,
@@ -235,12 +320,28 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
     """Customer creates a new booking"""
     customer_id = payload.get("user_id")
     if not customer_id or not customer_id.startswith("CST"):
-        raise HTTPException(status_code=403, detail="Only customers can create bookings")
+        raise HTTPException(status_code=403, detail="Only customers can create bookings.")
     
     # Verify customer owns the car
     car = await db.get(CustomerCar, booking_data.customer_car_id)
     if not car or car.customer_id != customer_id:
-        raise HTTPException(status_code=403, detail="Car not found or doesn't belong to customer")
+        raise HTTPException(status_code=403, detail="Car not found or doesn't belong to customer.")
+    
+    # drop date pickup date proper time gap check to complete all services
+    hours_required = 0
+    for service_id, _ in booking_data.service_price.items():
+        service = await db.get(Service, service_id)
+        if not service:
+            raise HTTPException(status_code=404, detail="Service not found.")
+        hours_required += service.time_hrs
+    
+    working_hours = 9
+    days_required = math.ceil(hours_required / working_hours)
+    customer_booked_days = (booking_data.drop_date - booking_data.pickup_date).days
+
+    if customer_booked_days < days_required:
+        raise HTTPException(status_code=403, detail=f"{days_required} day(s) are required to complete all the booked services.")
+
     
     # Get or create addresses
     pickup_address_id = await get_or_create_address(
@@ -279,16 +380,17 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
         raise HTTPException(status_code=400, detail="Invalid data or foreign key constraint")
     
     # Create booked services
+    booked_services = []
     for service_id, est_price in booking_data.service_price.items():
-        booked_service = BookedService(
+        booked_services.append(BookedService(
             booking_id=booking.id,
             service_id=service_id,
             status_id=booked_status_id,
             est_price=est_price,
             price=None,
             completed=False
-        )
-        db.add(booked_service)
+        ))
+    db.add_all(booked_services)
     
     await db.commit()
     await db.refresh(booking)
@@ -358,7 +460,7 @@ async def get_customer_bookings(db: Session, payload: dict):
                 "reg_no": booking.car_reg_number,
                 "img": booking.customer_car.car.img
             },
-            "status": customer_status_mapping.get(booking.status.name.lower(), booking.status.name),
+            "status": get_customer_status_mapping(booking).get(booking.status.name.lower()),
             "validate_price": validate_price_quote,
             "pickup_date": booking.pickup_date,
             "drop_date": booking.drop_date,
@@ -450,7 +552,12 @@ async def customer_confirm_services(db: Session, booking_id: int, selection: Cus
 
         await db.commit()
 
-        return JSONResponse(content={"order_id": razorpay_order['id'], "amount": total_with_gst})
+        response = {
+            "order_id": razorpay_order['id'],
+            "amount": int(total_with_gst * 100)     # amount in paise
+            }
+
+        return JSONResponse(content=response)
     
     else:
         payment = OfflinePayment(
@@ -474,7 +581,7 @@ async def customer_confirm_services(db: Session, booking_id: int, selection: Cus
         await db.commit()
         
         return JSONResponse(content={"message": "Services confirmed successfully"})
-
+    
 
 async def cancel_booking(db: Session, booking_id: int, payload: dict):
     """Customer cancels a booking"""
@@ -482,12 +589,70 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
     
     booking = await db.get(Booking, booking_id)
     if not booking or booking.customer_id != customer_id:
-        raise HTTPException(status_code=403, detail="Booking not found or access denied")
+        raise HTTPException(status_code=403, detail="Booking not found or access denied.")
     
+
+    current_booking_status = booking.status.name.lower()
+    if current_booking_status == "cancelled":
+        raise HTTPException(status_code=403, detail="Attempting invalid state transition.")
+
+    if current_booking_status in ["completed", "out for delivery", "delivered"]:
+        raise HTTPException(status_code=403, detail="Service is completed. Cancellation is not allowed.")
+    
+    elif current_booking_status in ["booked", "pickup"]:
+        cancellation_fee = 0    # No cancellation fee
+    
+    elif current_booking_status == "in-progress":
+        confirmed_status_id = await get_status_id_by_name(db, "confirmed")
+        total_amount = 0
+        total_difficulty = 0
+        for bs in booking.booked_services:
+            service_difficulty = bs.service.difficulty
+            if bs.status_id == confirmed_status_id and bs.completed:
+                total_amount += bs.price * service_difficulty
+
+            total_difficulty += service_difficulty
+
+        cancellation_fee = total_amount / max(total_difficulty, 1)
+        if cancellation_fee < 100:
+            cancellation_fee = 100
+
+        gst_rate = 0.18
+        gst = cancellation_fee * gst_rate
+        cancellation_fee_with_gst = cancellation_fee + gst
+
+        if booking.payment_method.name == "offline":
+            result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == booking.id))
+            payment_obj = result.scalar_one_or_none()
+
+            payment_obj.amount = cancellation_fee
+            payment_obj.gst = gst
+            db.add(payment_obj)
+
+        else:
+            _, amount_paid = await get_online_payment_status(db, booking.id)
+            refund_amount = max(amount_paid - cancellation_fee_with_gst, 0)
+            
+            pending_state_id = await get_status_id_by_name(db, "pending")
+            refund = Refund(
+                booking_id = booking.id,
+                customer_id = booking.customer_id,
+                status_id = pending_state_id,
+                amount = refund_amount
+            )
+            db.add(refund)
+
+    else:
+        cancellation_fee = 100
+        await add_cancellation_fee(db, booking, cancellation_fee)
+
     await update_booking_status(db, booking, "cancelled")
     await db.commit()
     
-    return JSONResponse(content={"message": "Booking cancelled successfully"})
+    return JSONResponse(content={
+        "message": "Booking cancelled successfully. Online payments will be refunded in 14 days.",
+        "cancellation_fee": cancellation_fee
+        })
 
 
 # Admin Functions
@@ -533,8 +698,6 @@ async def get_admin_dashboard_bookings(db: Session, payload: dict, status_id: Op
                 "validated": latest_progress_obj.validated,
                 "timestamp": latest_progress_obj.created_at
             }
-        else:
-            sorted_progress = None
 
         # fetch booking assignment
         if booking.booking_assignments:
@@ -548,8 +711,6 @@ async def get_admin_dashboard_bookings(db: Session, payload: dict, status_id: Op
                 "assignment_type": sorted_assignments[0].assignment_type.name,
                 "status": sorted_assignments[0].status.name.lower()
             }
-        else:
-            sorted_assignments = None
 
         # fetch analysis report
         if booking.booking_analysis:
@@ -594,6 +755,27 @@ async def get_admin_dashboard_bookings(db: Session, payload: dict, status_id: Op
                         booked_services = booked_services_result.scalars().all()
                         all_completed = all(bs.completed for bs in booked_services)
                         action_required = "none" if all_completed else "assign"
+
+        elif status_name == "delivered":
+            if latest_progress is not None and not latest_progress.get("validated"):
+                action_required = "validate"
+
+        elif status_name == "cancelled" and booking.payment_method_id is not None:
+            if not await cancelled_drop_assigned(db, booking.id):
+                action_required = "assign"
+            else:
+                result = await db.execute(
+                    select(BookingProgress)
+                    .join(BookingProgress.status)
+                    .where(
+                        BookingProgress.booking_id == booking.id,
+                        Status.name == "cancelled"
+                    )
+                )
+                cancelled_drop_update = result.scalar_one_or_none() 
+                if cancelled_drop_update and not cancelled_drop_update.validated:
+                    action_required = "validate"
+
         # print(booking)
         dashboard_data.append({
             "booking_id": booking.id,
@@ -617,16 +799,6 @@ async def get_admin_dashboard_bookings(db: Session, payload: dict, status_id: Op
     return dashboard_data
 
 
-async def get_booked_services(db: Session, booking_id: int):
-    """Get all services for a booking"""
-    result = await db.execute(
-        select(BookedService)
-        .options(selectinload(BookedService.service), selectinload(BookedService.status))
-        .where(BookedService.booking_id == booking_id)
-    )
-    return result.scalars().all()
-
-
 async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate):
     """Admin assigns mechanic to a booking"""
     booking = await db.get(Booking, assignment_data.booking_id)
@@ -644,7 +816,12 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
     if booking.booking_progress:
         latest_progress = get_latest_progress(booking.booking_progress)
         if not latest_progress.validated:
-            raise HTTPException(status_code=404, detail="Validate and update previous progress to customer before assigning.")
+            raise HTTPException(status_code=400, detail="Validate and update previous progress to customer before assigning.")
+    
+    if booking.booking_assignments:
+        latest_assignment = get_latest_assignment(booking.booking_assignments)
+        if latest_assignment.status.name == "assigned":
+            raise HTTPException(status_code=400, detail="Already assigned to a mechanic.")
         
     assignment_type_name = assignment_type.name.lower()
 
@@ -669,6 +846,9 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
 
     elif assignment_type_name == "drop" and current_booking_status_name == 'completed':
         await update_booking_status(db, booking, "out for delivery")
+
+    elif assignment_type_name == "drop" and current_booking_status_name == 'cancelled'and booking.payment_method_id is not None and not await cancelled_drop_assigned(db, booking.id):
+        pass
 
     else:
         raise HTTPException(status_code=400, detail="Attempting invalid state transition")
@@ -711,11 +891,17 @@ async def get_mechanic_assignments(db: Session, payload: dict):
     assignments = result.scalars().all()
     result = []
     for assignment in assignments:
+        # If booking is cancelled - if assignment type is drop then it is for returning the car so it can be sent
+        if assignment.booking.status.name.lower() == "cancelled" and assignment.assignment_type.name != "drop":
+            continue    # need not show assignment of cancelled bookings
+
+        # Otherwise include it in the output
         result.append(
             {
                 "id": assignment.id,
                 "assignment_type": assignment.assignment_type.name,
                 "status": assignment.status.name,
+                "note": assignment.note,
                 "booking_id": assignment.booking_id,
                 "assigned_at": assignment.assigned_at
             }
@@ -728,21 +914,32 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
     """Mechanic creates progress update"""
     mechanic_id = payload.get("user_id")
     if not mechanic_id or not mechanic_id.startswith("MEC"):
-        raise HTTPException(status_code=403, detail="Only mechanics can create progress updates")
+        raise HTTPException(status_code=403, detail="Only mechanics can create progress updates.")
     
     booking = await db.get(Booking, progress_data.booking_id)
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    
+    if booking.booking_assignments:
+        sorted_assignments = sorted(booking.booking_assignments, key=lambda x: x.assigned_at, reverse=True)
+        if sorted_assignments[0].mechanic_id != mechanic_id:
+            raise HTTPException(status_code=403, detail="Trying to access other mechanic assignments.")
+    
+    # Check latest progress is validated before assigning
+    if booking.booking_progress:
+        latest_progress = get_latest_progress(booking.booking_progress)
+        if not latest_progress.validated:
+            raise HTTPException(status_code=404, detail="Already updated progress.")
     
     current_booking_status = booking.status.name.lower()
-    valid_states = ["pickup", "in-progress", "out for delivery"]
+    valid_states = ["pickup", "in-progress", "out for delivery", "cancelled"]
 
     if current_booking_status not in valid_states:
-        raise HTTPException(status_code=400, detail="Attempting invalid state transition")
+        raise HTTPException(status_code=400, detail="Attempting invalid state transition.")
     
 
     # Mark services as completed
-    if current_booking_status == "in-progress" and progress_data.services_completed_ids:
+    if current_booking_status == "in-progress" and progress_data.services_completed_ids is not None:
         await db.execute(
             update(BookedService)
             .where(
@@ -751,6 +948,17 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
             )
             .values(completed=True)
         )
+
+    # offline payment check
+    elif current_booking_status == "out for delivery" and booking.payment_method.name == "offline" and not await offline_payment_completed(db, booking.id):
+        raise HTTPException(status_code=400, detail="Payment not yet made. Collect cash from customer.")
+
+    elif current_booking_status == "cancelled":
+        if booking.payment_method_id is None or await cancelled_booking_returned(db, booking.id):
+            raise HTTPException(status_code=400, detail="Attempting invalid state transition.")
+
+        if booking.payment_method.name == "offline" and not await offline_payment_completed(db, booking.id):
+            raise HTTPException(status_code=400, detail="Payment not yet made. Collect cash from customer.")
         
     # Create progress update
     progress = BookingProgress(
@@ -759,6 +967,7 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
         description=progress_data.description,
         images=progress_data.images,
         status_id=booking.status_id,
+        completed_service_ids=progress_data.services_completed_ids,
         validated=False
     )
     db.add(progress)
@@ -800,6 +1009,11 @@ async def create_analysis(db: Session, analysis_data: BookingAnalysisCreate, pay
     booking = await db.get(Booking, analysis_data.booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.booking_assignments:
+        sorted_assignments = sorted(booking.booking_assignments, key=lambda x: x.assigned_at, reverse=True)
+        if sorted_assignments[0].mechanic_id != mechanic_id:
+            raise HTTPException(status_code=403, detail="Trying to access other mechanic assignments.")
     
     current_booking_status = booking.status.name.lower()
     if current_booking_status != "analysis":
@@ -893,6 +1107,89 @@ async def create_analysis(db: Session, analysis_data: BookingAnalysisCreate, pay
     return analysis
 
 
+async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: CashOnDelivery, payload: dict):
+    """Customer confirms services after analysis"""
+    mechanic_id = payload.get("user_id")
+    
+    # Verify booking belongs to customer
+    result = await db.execute(
+        select(BookingAssignment)
+        .join(BookingAssignment.assignment_type)
+        .where(
+            BookingAssignment.booking_id == booking_id,
+            AssignmentType.name == "drop",
+            BookingAssignment.mechanic_id == mechanic_id
+        )
+        .options(selectinload(BookingAssignment.booking))
+    )
+
+    assignment = result.scalar_one_or_none()    
+    if not assignment:
+        raise HTTPException(status_code=403, detail="Access denied.")
+    
+    booking = assignment.booking
+    if not booking:
+        raise HTTPException(status_code=403, detail="Booking not found.")
+
+    # Check if booking is in 'analysed' status
+    valid_state = (booking.status.name == "out for delivery" or booking.status.name == "cancelled") and booking.payment_method.name == "offline"
+    if not valid_state:
+        raise HTTPException(status_code=400, detail="Booking must be in 'out for delivery' or 'cancelled' status and also opted for cash on delivery.")
+    
+    if await offline_payment_completed(db, booking.id):
+        raise HTTPException(status_code=403, detail="Payment already completed.")
+    
+    payment_method_obj = await db.get(PaymentMethod, request_body.payment_method_id)
+    if not payment_method_obj:
+        raise HTTPException(status_code=400, detail="invalid payment method.")
+    
+
+    # next step is to calculate amount to pay
+    result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == booking.id))
+    payment_obj = result.scalar_one_or_none()
+
+    total_price = payment_obj.amount
+
+    # Add GST
+    gst_amount = payment_obj.gst
+    total_with_gst = total_price + gst_amount
+
+    payment_method = payment_method_obj.name
+
+    # separate online and offline payments
+    if payment_method == "online":
+        # create razorpay order
+        razorpay_order = await payment_service.create_razorpay_order(total_with_gst)
+        pending_status_id = await get_status_id_by_name(db, "pending")
+
+        # add entry to db with payment in pending state
+        payment = OnlinePayment(
+            booking_id = booking.id,
+            status_id = pending_status_id,
+            amount = total_price,
+            gst = gst_amount,
+            razorpay_order_id = razorpay_order['id']
+        )
+
+        db.add(payment)
+
+        await db.commit()
+
+        response = {
+            "order_id": razorpay_order['id'],
+            "amount": total_with_gst * 100     # amount in paise
+            }
+
+        return JSONResponse(content=response)
+    
+    else:
+        payment_obj.status_id = await get_status_id_by_name(db, "success")
+        
+        await db.commit()
+        
+        return JSONResponse(content={"message": "Payment received successfully"})
+
+
 # Admin validation functions
 async def update_progress(db: Session, progress_id: int, update_data: BookingProgressUpdate):
     """Admin updates progress"""
@@ -940,14 +1237,30 @@ async def validate_progress(db: Session, progress_id: int):
     if progress.validated:
         raise HTTPException(status_code=400, detail="Progress already validated.")
     
-    # if all services are completed, change booking to completed state
+    mechanic = await db.get(Mechanic, progress.mechanic_id)
+  
     if progress.status_id == await get_status_id_by_name(db, "in-progress"):
+        # add score to mechanic
+        booked_services = progress.booking.booked_services
+        service_completed_by_mechanic = progress.completed_service_ids
+
+        if service_completed_by_mechanic:
+            score = 0
+            for bs in booked_services:
+                if bs.completed and bs.service_id in service_completed_by_mechanic:
+                    score += bs.service.difficulty
+
+            if mechanic:
+                mechanic.score = (mechanic.score or 0) + score
+
+        # if all services are completed, change booking to completed state
         confirmed_status_id = await get_status_id_by_name(db, "confirmed")
-        print(confirmed_status_id)
-        if check_all_booked_services_completed(progress.booking.booked_services, confirmed_status_id):
-            print(2)
+        if check_all_booked_services_completed(booked_services, confirmed_status_id):
             await update_booking_status(db, progress.booking, "completed")
     
+    elif mechanic:
+        mechanic.score = (mechanic.score or 0) + 2  # difficulty 2 for pickup and drop
+
     progress.validated = True
     
     await db.commit()
@@ -983,6 +1296,10 @@ async def validate_analysis(db: Session, booking_id: int):
     if analysis.validated:
         raise HTTPException(status_code=400, detail="Analysis already validated.")
     
+    mechanic = await db.get(Mechanic, analysis.mechanic_id)
+    if mechanic:
+        mechanic.score = (mechanic.score or 0) + 3  # difficulty 3 analysis
+    
     analysis.validated = True
     
     await db.commit()
@@ -997,18 +1314,30 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
         select(OnlinePayment).where(OnlinePayment.razorpay_order_id == order_id)
     )
     payment = result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment record not found.")
 
-    if not payment_service.verify_signature(order_id, payment_id, signature):
-        # update payment failed
-        payment.razorpay_payment_id = payment_id
-        payment.razorpay_signature = signature
+    success_status_id = await get_status_id_by_name(db, "success")
+    if payment.status_id == success_status_id:
+        return JSONResponse(content={"message": "Payment already verified."})
+    
+    try:
+        if not payment_service.verify_signature(order_id, payment_id, signature):
+            payment.razorpay_payment_id = payment_id
+            payment.razorpay_signature = signature
+            payment.status_id = await get_status_id_by_name(db, "failed")
+            await db.commit()
+            raise HTTPException(status_code=400, detail="Invalid payment signature")
+    except Exception as e:
         payment.status_id = await get_status_id_by_name(db, "failed")
-        raise HTTPException(status_code=400, detail="Invalid payment signature")
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"Payment verification error: {str(e)}")
+
     
     # update payment success
     payment.razorpay_payment_id = payment_id
     payment.razorpay_signature = signature
-    payment.status_id = await get_status_id_by_name(db, "success")
+    payment.status_id = success_status_id
 
     
     # fetch selection from stage
@@ -1029,7 +1358,7 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     rejected_status_id = await get_status_id_by_name(db, "rejected")
 
     # confirm booked services
-    await confirm_selected_services(db, booking, set(selection.service_ids), confirmed_status_id, rejected_status_id)
+    await confirm_selected_services(db, booking, set(selection.selected_services), confirmed_status_id, rejected_status_id)
     
     # Update booking status to 'in-progress'
     await update_booking_status(db, booking, "in-progress")
@@ -1037,3 +1366,47 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     await db.commit()
     
     return JSONResponse(content={"message": "Payment successful."})
+
+# webhook function for cash on delivery
+async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, signature: str):
+    # fetch payment object
+    result = await db.execute(
+        select(OnlinePayment).where(OnlinePayment.razorpay_order_id == order_id)
+    )
+    payment = result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment record not found.")
+
+    success_status_id = await get_status_id_by_name(db, "success")
+    if payment.status_id == success_status_id:
+        return JSONResponse(content={"message": "Payment already verified."})
+    
+    try:
+        if not payment_service.verify_signature(order_id, payment_id, signature):
+            payment.razorpay_payment_id = payment_id
+            payment.razorpay_signature = signature
+            payment.status_id = await get_status_id_by_name(db, "failed")
+            await db.commit()
+            raise HTTPException(status_code=400, detail="Invalid payment signature")
+    except Exception as e:
+        payment.status_id = await get_status_id_by_name(db, "failed")
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"Payment verification error: {str(e)}")
+
+    
+    # update payment success
+    payment.razorpay_payment_id = payment_id
+    payment.razorpay_signature = signature
+    payment.status_id = success_status_id
+
+    
+    # update offline payment entry
+    result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == payment.booking_id))
+    payment_obj = result.scalar_one_or_none()
+
+    payment_obj.status_id = success_status_id
+    payment_obj.paid_online = True
+    
+    await db.commit()
+    
+    return JSONResponse(content={"message": "Payment received successfully"})

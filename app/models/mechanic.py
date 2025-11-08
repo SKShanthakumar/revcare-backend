@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, VARCHAR, TIMESTAMP, Boolean, ForeignKey, Date, FetchedValue, BIGINT, Integer
+from sqlalchemy import Table, Column, VARCHAR, TIMESTAMP, Boolean, ForeignKey, Date, FetchedValue, BIGINT, Integer, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -22,6 +22,7 @@ class Mechanic(Base):
     analysis = Column(Boolean, default=False)
     assigned = Column(Boolean, default=False)
     role_id = Column(Integer, ForeignKey("roles.id", ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    score = Column(Integer, nullable=False, server_default=text('0'))
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, onupdate=func.now())
     

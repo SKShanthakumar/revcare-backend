@@ -59,6 +59,8 @@ def decode_access_token(token: str) -> dict | None:
             return None
         return payload
     except JWTError:
+        import traceback
+        # traceback.print_exc()
         return None
 
 # Decode/Verify Refresh token

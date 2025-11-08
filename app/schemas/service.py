@@ -75,6 +75,13 @@ class ServiceBase(BaseModel):
         if v <= 0:
             raise ValueError("Service time must be greater than 0")
         return v
+    
+    @field_validator('difficulty')
+    def validate_difficulty(cls, v: int) -> int:
+        """Validate difficulty"""
+        if v <= 0 or v > 5:
+            raise ValueError("Difficulty must be in range 1-5")
+        return v
 
 
 class ServiceCreate(ServiceBase):
@@ -201,6 +208,15 @@ class ServiceUpdate(BaseModel):
         """Validate service time"""
         if v is not None and v <= 0:
             raise ValueError("Service time must be greater than 0")
+        return v
+    
+    @field_validator('difficulty')
+    def validate_difficulty(cls, v: Optional[int]) -> Optional[int]:
+        """Validate difficulty"""
+        if v is None:
+            return v
+        if v <= 0 or v > 5:
+            raise ValueError("Difficulty must be in range 1-5")
         return v
     
     @field_validator('images')

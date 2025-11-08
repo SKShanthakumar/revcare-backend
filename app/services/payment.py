@@ -11,7 +11,7 @@ async def create_razorpay_order(total: float):
     """Create Razorpay order and return details."""
     def _create():
         order_data = {
-            "amount": int(total * 100),
+            "amount": total * 100,     # amount in paise
             "currency": "INR"
         }
         return razorpay_client.order.create(order_data)
