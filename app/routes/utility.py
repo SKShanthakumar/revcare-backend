@@ -13,18 +13,62 @@ router = APIRouter()
 # status table
 @router.get("/status", response_model=List[StatusResponse])
 async def get_status(db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:UTILS"])):
+    """
+    Get all statuses.
+    
+    Args:
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        List[StatusResponse]: List of statuses
+    """
     return await crud.get_all_records(db, Status)
 
 @router.post("/status", response_model=StatusResponse)
 async def create_status(status: StatusCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:UTILS"])):
+    """
+    Create a new status.
+    
+    Args:
+        status: Status creation data
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        StatusResponse: Created status
+    """
     return await crud.create_record(db, status.model_dump(), Status)
 
 @router.put("/status/{id}", response_model=StatusResponse)
 async def update_status_by_id(id: int, status: StatusUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:UTILS"])):
+    """
+    Update a status.
+    
+    Args:
+        id: Status ID
+        status: Updated status data
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        StatusResponse: Updated status
+    """
     return await crud.update_record_by_primary_key(db, id, status.model_dump(exclude_none=True), Status)
 
 @router.delete("/status/{id}", response_class=JSONResponse)
 async def delete_status_by_id(id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:UTILS"])):
+    """
+    Delete a status.
+    
+    Args:
+        id: Status ID
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        JSONResponse: Success message
+    """
     message = await crud.delete_record_by_primary_key(db, id, Status)
     return JSONResponse(content=message)
 
@@ -32,17 +76,61 @@ async def delete_status_by_id(id: int, db: Session = Depends(get_postgres_db), p
 # timeslots table
 @router.get("/timeslot", response_model=List[TimeslotResponse])
 async def get_timeslots(db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:UTILS"])):
+    """
+    Get all timeslots.
+    
+    Args:
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        List[TimeslotResponse]: List of timeslots
+    """
     return await crud.get_all_records(db, Timeslot)
 
 @router.post("/timeslot", response_model=TimeslotResponse)
 async def create_timeslot(timeslot: TimeslotCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:UTILS"])):
+    """
+    Create a new timeslot.
+    
+    Args:
+        timeslot: Timeslot creation data
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        TimeslotResponse: Created timeslot
+    """
     return await crud.create_record(db, timeslot.model_dump(), Timeslot)
 
 @router.put("/timeslot/{id}", response_model=TimeslotResponse)
 async def update_timeslot_by_id(id: int, timeslot: TimeslotUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:UTILS"])):
+    """
+    Update a timeslot.
+    
+    Args:
+        id: Timeslot ID
+        timeslot: Updated timeslot data
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        TimeslotResponse: Updated timeslot
+    """
     return await crud.update_record_by_primary_key(db, id, timeslot.model_dump(exclude_none=True), Timeslot)
 
 @router.delete("/timeslot/{id}", response_class=JSONResponse)
 async def delete_timeslot_by_id(id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:UTILS"])):
+    """
+    Delete a timeslot.
+    
+    Args:
+        id: Timeslot ID
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        JSONResponse: Success message
+    """
     message = await crud.delete_record_by_primary_key(db, id, Timeslot)
     return JSONResponse(content=message)

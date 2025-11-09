@@ -11,6 +11,22 @@ from app.auth.token_blacklist import is_token_blacklisted
 from app.schemas import Login
 
 async def login_user(credentials: Login, db: Session):
+    """
+    Authenticate user and create access/refresh tokens.
+    
+    Validates user credentials, retrieves user based on role, and generates
+    JWT access and refresh tokens. Stores refresh token in database.
+    
+    Args:
+        credentials: Login schema containing phone and password
+        db: Async database session
+        
+    Returns:
+        tuple: (refresh_token, access_token) as strings
+        
+    Raises:
+        HTTPException: 401 if phone number is invalid or password is incorrect
+    """
     phone = credentials.phone
     password = credentials.password
 
@@ -46,6 +62,24 @@ async def login_user(credentials: Login, db: Session):
     return refresh_token, access_token
 
 async def get_access_token_using_refresh_token(refresh_token: str, db: Session):
+    """
+    Generate new access token from refresh token.
+    
+    Validates the refresh token, checks if it's blacklisted, and generates
+    a new access token with the same user credentials.
+    
+    Args:
+        refresh_token: JWT refresh token string
+        db: Async database session
+        
+    Returns:
+        JSONResponse: Contains new access_token and token_type
+        
+    Raises:
+        HTTPException: 
+            - 401 if refresh token is invalid
+            - 403 if refresh token has been revoked
+    """
     payload = decode_refresh_token(refresh_token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -63,6 +97,17 @@ async def get_access_token_using_refresh_token(refresh_token: str, db: Session):
     return JSONResponse(content={"access_token": new_access_token, "token_type": "bearer"})
 
 async def logout_user(access_token_payload: dict, refresh_token: str, db: Session):
+    """
+    Logout user by revoking access and refresh tokens.
+    
+    Blacklists both access and refresh tokens by adding them to the RevokedToken table.
+    Removes the refresh token from the RefreshToken table.
+    
+    Args:
+        access_token_payload: Decoded JWT access token payload
+        refresh_token: JWT refresh token string
+        db: Async database session
+    """
     jti = access_token_payload.get("jti")
     exp_timestamp = access_token_payload.get("exp")
     exp = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)

@@ -142,9 +142,24 @@ scopes = {
 }
 
 def get_all_scopes():
+    """
+    Get all available permission scopes in the system.
+    
+    Returns:
+        list: List of all scope strings (e.g., ["READ:USERS", "WRITE:USERS", ...])
+    """
     return list(scopes.keys())
 
 def get_scope_for_role(role_id: int):
+    """
+    Get all permission scopes allowed for a specific role.
+    
+    Args:
+        role_id: Role ID (1=Admin, 2=Mechanic, 3=Customer)
+        
+    Returns:
+        list: List of permission scope strings allowed for the role
+    """
     res = []
     for permission, allowed in scopes.items():
         if role_id in allowed:
@@ -152,10 +167,28 @@ def get_scope_for_role(role_id: int):
     return res
 
 def get_admin_scopes():
+    """
+    Get all permission scopes for admin role (role_id=1).
+    
+    Returns:
+        list: List of permission scope strings for admin
+    """
     return get_scope_for_role(1)
 
 def get_mechanic_scopes():
+    """
+    Get all permission scopes for mechanic role (role_id=2).
+    
+    Returns:
+        list: List of permission scope strings for mechanic
+    """
     return get_scope_for_role(2)
 
 def get_customer_scopes():
+    """
+    Get all permission scopes for customer role (role_id=3).
+    
+    Returns:
+        list: List of permission scope strings for customer
+    """
     return get_scope_for_role(3)

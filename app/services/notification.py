@@ -14,9 +14,6 @@ from app.models import (
 )
 
 
-# --------------------------------------------------------
-# Notification Type Constants
-# --------------------------------------------------------
 class NotificationType:
     BOOKING_CONFIRMATION = "booking_confirmation"
     PROGRESS_UPDATE = "progress_update"
@@ -24,11 +21,20 @@ class NotificationType:
     QUERY_RESPONSE = "query_response"
 
 
-# --------------------------------------------------------
-# Utility: Safe ORM Eager Loading + Serialization
-# --------------------------------------------------------
 async def fetch_booking_with_relations(db: Session, booking_id: int) -> Booking:
-    """Fetch booking with all needed relationships (eager loaded)."""
+    """
+    Fetch booking with all needed relationships (eager loaded).
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to fetch
+        
+    Returns:
+        Booking: Booking instance with all related entities loaded
+        
+    Raises:
+        HTTPException: 404 if booking is not found
+    """
     result = await db.execute(
         select(Booking)
         .options(
@@ -55,8 +61,17 @@ async def fetch_booking_with_relations(db: Session, booking_id: int) -> Booking:
         raise HTTPException(status_code=404, detail=f"Booking {booking_id} not found")
     return booking
 
+
 def serialize_booking(booking: Booking) -> Dict[str, Any]:
-    """Convert ORM booking object into a plain dict (safe for templates)."""
+    """
+    Convert ORM booking object into a plain dict (safe for templates).
+    
+    Args:
+        booking: Booking ORM instance with all relationships loaded
+        
+    Returns:
+        dict: Dictionary representation of booking data
+    """
     return {
         "id": booking.id,
         "customer": {
@@ -93,10 +108,20 @@ def serialize_booking(booking: Booking) -> Dict[str, Any]:
     }
 
 
-# --------------------------------------------------------
-# Notification Category + Logging
-# --------------------------------------------------------
 async def get_notification_category_id(db: Session, category_name: str) -> int:
+    """
+    Get notification category ID by name.
+    
+    Args:
+        db: Async database session
+        category_name: Name of the notification category
+        
+    Returns:
+        int: Notification category ID
+        
+    Raises:
+        HTTPException: 404 if category is not found
+    """
     result = await db.execute(
         select(NotificationCategory).where(NotificationCategory.name == category_name)
     )
@@ -113,6 +138,21 @@ async def log_notification(
     subject: str,
     attachments: Optional[List[str]] = None
 ):
+    """
+    Log a notification to the database.
+    
+    Creates a log entry for sent notifications for tracking and auditing purposes.
+    
+    Args:
+        db: Async database session
+        category_name: Notification category name
+        recipient_email: Email address of the recipient
+        subject: Email subject line
+        attachments: Optional list of attachment file paths
+        
+    Returns:
+        NotificationLog: Created log entry, or None if logging fails
+    """
     try:
         category_id = await get_notification_category_id(db, category_name)
         log_entry = NotificationLog(
@@ -130,10 +170,16 @@ async def log_notification(
         return None
 
 
-# --------------------------------------------------------
-# Template Data Preparation (All Plain Dicts)
-# --------------------------------------------------------
 def prepare_booking_confirmation_data(booking: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Prepare booking confirmation email template data.
+    
+    Args:
+        booking: Serialized booking dictionary
+        
+    Returns:
+        dict: Template data for booking confirmation email
+    """
     total_price = sum(s["est_price"] for s in booking["booked_services"])
     return {
         "customer_name": booking["customer"]["name"],
@@ -153,6 +199,16 @@ def prepare_booking_confirmation_data(booking: Dict[str, Any]) -> Dict[str, Any]
 
 
 def prepare_progress_update_data(booking: Dict[str, Any], progress: BookingProgress) -> Dict[str, Any]:
+    """
+    Prepare progress update email template data.
+    
+    Args:
+        booking: Serialized booking dictionary
+        progress: BookingProgress instance
+        
+    Returns:
+        dict: Template data for progress update email
+    """
     return {
         "customer_name": booking["customer"]["name"],
         "booking_id": booking["id"],
@@ -167,6 +223,17 @@ def prepare_progress_update_data(booking: Dict[str, Any], progress: BookingProgr
 
 
 def prepare_invoice_data(booking: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Prepare invoice email template data.
+    
+    Calculates totals for completed services including GST.
+    
+    Args:
+        booking: Serialized booking dictionary
+        
+    Returns:
+        dict: Template data for invoice email
+    """
     completed_services = [
         s for s in booking["booked_services"]
         if s["status"].lower() == "confirmed" and s["completed"]
@@ -195,6 +262,17 @@ def prepare_invoice_data(booking: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def prepare_query_response_data(query_email: str, query_text: str, response_text: str) -> Dict[str, Any]:
+    """
+    Prepare query response email template data.
+    
+    Args:
+        query_email: Email address of the query sender
+        query_text: Original query text
+        response_text: Admin's response text
+        
+    Returns:
+        dict: Template data for query response email
+    """
     return {
         "query": query_text,
         "response": response_text,
@@ -202,9 +280,6 @@ def prepare_query_response_data(query_email: str, query_text: str, response_text
     }
 
 
-# --------------------------------------------------------
-# Main Notification Sender (Greenlet-safe)
-# --------------------------------------------------------
 async def send_notification(
     db: Session,
     notification_type: str,
@@ -213,6 +288,28 @@ async def send_notification(
     progress: Optional[BookingProgress] = None,
     query_data: Optional[Dict[str, str]] = None
 ):
+    """
+    Send a notification email based on notification type.
+    
+    Supports multiple notification types: booking confirmation, progress update,
+    invoice, and query response. Loads booking data if needed and sends formatted
+    email using HTML templates.
+    
+    Args:
+        db: Async database session
+        notification_type: Type of notification (from NotificationType class)
+        recipient_email: Email address of the recipient
+        booking_id: Optional booking ID (required for booking-related notifications)
+        progress: Optional BookingProgress instance (required for progress updates)
+        query_data: Optional dictionary with 'query' and 'response' keys (required for query responses)
+        
+    Returns:
+        dict: Status message with success indication
+        
+    Raises:
+        HTTPException: 500 if email sending fails
+        ValueError: If required parameters are missing for the notification type
+    """
     try:
         # Load booking if required
         booking_data = None
@@ -283,10 +380,17 @@ async def send_notification(
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
-# --------------------------------------------------------
-# Convenience Wrappers
-# --------------------------------------------------------
 async def send_booking_confirmation(db: Session, booking_id: int):
+    """
+    Send booking confirmation email to customer.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to send confirmation for
+        
+    Returns:
+        dict: Status message with success indication
+    """
     booking = await fetch_booking_with_relations(db, booking_id)
     return await send_notification(
         db=db,
@@ -297,6 +401,17 @@ async def send_booking_confirmation(db: Session, booking_id: int):
 
 
 async def send_progress_update(db: Session, booking_id: int, progress: BookingProgress):
+    """
+    Send progress update email to customer.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID for the progress update
+        progress: BookingProgress instance with update details
+        
+    Returns:
+        dict: Status message with success indication
+    """
     booking = await fetch_booking_with_relations(db, booking_id)
     return await send_notification(
         db=db,
@@ -308,6 +423,16 @@ async def send_progress_update(db: Session, booking_id: int, progress: BookingPr
 
 
 async def send_invoice(db: Session, booking_id: int):
+    """
+    Send invoice email to customer.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to send invoice for
+        
+    Returns:
+        dict: Status message with success indication
+    """
     booking = await fetch_booking_with_relations(db, booking_id)
     return await send_notification(
         db=db,
@@ -318,6 +443,18 @@ async def send_invoice(db: Session, booking_id: int):
 
 
 async def send_query_response(db: Session, query_email: str, query_text: str, response_text: str):
+    """
+    Send query response email to customer.
+    
+    Args:
+        db: Async database session
+        query_email: Email address of the query sender
+        query_text: Original query text
+        response_text: Admin's response text
+        
+    Returns:
+        dict: Status message with success indication
+    """
     return await send_notification(
         db=db,
         notification_type=NotificationType.QUERY_RESPONSE,
@@ -327,6 +464,17 @@ async def send_query_response(db: Session, query_email: str, query_text: str, re
 
 
 async def get_notification_logs(db: Session, notification_category: Optional[int] = None, limit: int = 100):
+    """
+    Get notification logs with optional filtering.
+    
+    Args:
+        db: Async database session
+        notification_category: Optional notification category ID to filter by
+        limit: Maximum number of logs to return (default: 100)
+        
+    Returns:
+        list: List of NotificationLog instances
+    """
     query = select(NotificationLog).options(
         selectinload(NotificationLog.category),
     ).order_by(desc(NotificationLog.timestamp))

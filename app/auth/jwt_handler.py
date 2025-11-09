@@ -10,35 +10,47 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
 def create_access_token(data: dict):
-    '''
-    1. Copy the payload (data) to avoid mutating the original.
-    2. Calculate expiration (exp) → current UTC + 15 minutes.
-    3. Generate jti → unique token ID using UUID4.
-    4. Add fields to payload:
-        exp → expiration
-        type → "access" (to differentiate from refresh tokens)
-        jti → unique token identifier
-    5. Encode JWT with SECRET_KEY & HS256 algorithm
-    6.Return:
-        token → JWT string
-        jti → store in DB if implementing revocation
-        expire → optional, for DB record
-    '''
+    """
+    Create a JWT access token with expiration and unique identifier.
+    
+    This function:
+    1. Copies the payload (data) to avoid mutating the original
+    2. Calculates expiration (exp) → current UTC + configured minutes
+    3. Generates jti → unique token ID using UUID4
+    4. Adds fields to payload: exp, type="access", jti, iat
+    5. Encodes JWT with SECRET_KEY & configured algorithm
+    
+    Args:
+        data: Dictionary containing token payload (typically user_id and role)
+        
+    Returns:
+        str: JWT access token string
+    """
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     jti = str(uuid.uuid4())
     to_encode.update({"exp": expire, "type": "access", "jti": jti, "iat": datetime.utcnow()})
     token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return token
-# Create Refresh Token
-
 def create_refresh_token(data: dict):
-    '''
-    Same as access token but:Longer expiration (7 days or days mentioned in .env).
-    Stored separately with REFRESH_SECRET_KEY.
-    type = "refresh"
-    You can store this jti in revoked_tokens table for refresh token revocation if needed.
-    '''
+    """
+    Create a JWT refresh token with longer expiration.
+    
+    Similar to access token but with:
+    - Longer expiration (configured days from .env)
+    - Stored separately with REFRESH_SECRET_KEY
+    - type = "refresh"
+    - Returns jti and expire for potential revocation tracking
+    
+    Args:
+        data: Dictionary containing token payload (typically user_id and role)
+        
+    Returns:
+        tuple: (token, jti, expire) where:
+            - token: JWT refresh token string
+            - jti: Unique token identifier for revocation tracking
+            - expire: Expiration datetime
+    """
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     jti = str(uuid.uuid4())
@@ -46,13 +58,19 @@ def create_refresh_token(data: dict):
     token = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
     return token, jti, expire
 
-# Decode / Verify Access Token
-'''
-Decode JWT using the access secret key.
-Check that type is "access" → ensures a refresh token is not used by mistake.
-Returns payload if valid, else None.'''
-
 def decode_access_token(token: str) -> dict | None:
+    """
+    Decode and verify a JWT access token.
+    
+    Decodes JWT using the access secret key and verifies that type is "access"
+    to ensure a refresh token is not used by mistake.
+    
+    Args:
+        token: JWT access token string to decode
+        
+    Returns:
+        dict | None: Decoded token payload if valid, None if invalid or wrong type
+    """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "access":
@@ -63,12 +81,19 @@ def decode_access_token(token: str) -> dict | None:
         # traceback.print_exc()
         return None
 
-# Decode/Verify Refresh token
-'''
-Same logic but for refresh tokens.
-Only refresh tokens will pass the type check.'''
-
 def decode_refresh_token(token: str) -> dict | None:
+    """
+    Decode and verify a JWT refresh token.
+    
+    Same logic as decode_access_token but for refresh tokens.
+    Only refresh tokens will pass the type check.
+    
+    Args:
+        token: JWT refresh token string to decode
+        
+    Returns:
+        dict | None: Decoded token payload if valid, None if invalid or wrong type
+    """
     try:
         payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "refresh":

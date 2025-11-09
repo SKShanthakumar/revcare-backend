@@ -10,6 +10,26 @@ from app.utilities.data_utils import filter_data_for_model
 from app.services import crud
 
 async def create_user(db: Session, user: CustomerCreate | AdminCreate, model: Customer | Admin):
+    """
+    Create a new user (Customer or Admin) with authentication credentials.
+    
+    Creates both a User record (for authentication) and a Customer/Admin record
+    (for role-specific data) in a single transaction.
+    
+    Args:
+        db: Async database session
+        user: Customer or Admin creation schema
+        model: Customer or Admin model class
+        
+    Returns:
+        Customer | Admin: Created user instance
+        
+    Raises:
+        HTTPException: 
+            - 500 if role is not found
+            - 400 if phone or email already exists
+            - 400 if there's duplicate or invalid data
+    """
     phone = user.phone
     hashed_password = hashing.hash_password(user.password)
     model_name = model.__name__.lower()
@@ -58,6 +78,23 @@ async def create_user(db: Session, user: CustomerCreate | AdminCreate, model: Cu
 
 
 async def get_mechanics(db: Session, payload: dict, mechanic_id: str | None):
+    """
+    Get mechanic(s) information with access control.
+    
+    If mechanic_id is provided, returns that specific mechanic (with permission check).
+    Otherwise, returns all mechanics or just the logged-in mechanic based on role.
+    
+    Args:
+        db: Async database session
+        payload: Token payload containing user_id and role
+        mechanic_id: Optional mechanic ID to filter by
+        
+    Returns:
+        list: List of Mechanic instances
+        
+    Raises:
+        HTTPException: 403 if mechanic tries to access another mechanic's data
+    """
     filters = None
     if mechanic_id is not None:
         if payload.get("role") == 2 and (mechanic_id != payload.get("user_id")):
@@ -73,6 +110,25 @@ async def get_mechanics(db: Session, payload: dict, mechanic_id: str | None):
 
 
 async def create_mechanic(db: Session, user: MechanicCreate):
+    """
+    Create a new mechanic with authentication credentials and service categories.
+    
+    Creates both a User record (for authentication) and a Mechanic record
+    with associated service categories in a single transaction.
+    
+    Args:
+        db: Async database session
+        user: Mechanic creation schema
+        
+    Returns:
+        Mechanic: Created mechanic instance
+        
+    Raises:
+        HTTPException: 
+            - 500 if mechanic role is not found
+            - 400 if phone already exists
+            - 400 if there's duplicate or invalid data
+    """
     phone = user.phone
     hashed_password = hashing.hash_password(user.password)
 
@@ -121,6 +177,27 @@ async def create_mechanic(db: Session, user: MechanicCreate):
     
 
 async def update_mechanic(db: Session, mechanic_id: int, update_schema: MechanicUpdateWithForeignData, payload: dict):
+    """
+    Update mechanic information including service categories.
+    
+    Updates basic mechanic fields and/or service category associations.
+    Enforces access control - mechanics can only update their own data.
+    
+    Args:
+        db: Async database session
+        mechanic_id: ID of mechanic to update
+        update_schema: Update schema with mechanic fields and service_category_ids
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        Mechanic: Updated mechanic instance
+        
+    Raises:
+        HTTPException: 
+            - 403 if mechanic tries to update another mechanic's data
+            - 404 if mechanic is not found
+            - 400 if there's duplicate or invalid data
+    """
     if payload.get("role") == 2 and payload.get("user_id") != mechanic_id:
         raise HTTPException(status_code=403, detail="Operation not permitted.")
     
@@ -160,6 +237,22 @@ async def update_mechanic(db: Session, mechanic_id: int, update_schema: Mechanic
 
 
 async def delete_mechanic(id: str, db: Session, payload: dict):
+    """
+    Delete a mechanic account.
+    
+    Enforces access control - mechanics can only delete their own account.
+    
+    Args:
+        id: Mechanic ID to delete
+        db: Async database session
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 403 if mechanic tries to delete another mechanic's account
+    """
     if payload.get("role") == 2 and payload.get("user_id") != id:
         raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other mechanics.")
     
@@ -168,6 +261,23 @@ async def delete_mechanic(id: str, db: Session, payload: dict):
 
 
 async def get_customers(db: Session, payload: dict, customer_id: str | None):
+    """
+    Get customer(s) information with access control.
+    
+    If customer_id is provided, returns that specific customer (with permission check).
+    Otherwise, returns all customers or just the logged-in customer based on role.
+    
+    Args:
+        db: Async database session
+        payload: Token payload containing user_id and role
+        customer_id: Optional customer ID to filter by
+        
+    Returns:
+        list: List of Customer instances
+        
+    Raises:
+        HTTPException: 403 if customer tries to access another customer's data
+    """
     filters = None
     if customer_id is not None:
         if payload.get("role") == 3 and (customer_id != payload.get("user_id")):
@@ -183,6 +293,23 @@ async def get_customers(db: Session, payload: dict, customer_id: str | None):
 
 
 async def update_customer(id: str, customer_data: CustomerUpdate, db: Session, payload: dict):
+    """
+    Update customer information.
+    
+    Enforces access control - customers can only update their own data.
+    
+    Args:
+        id: Customer ID to update
+        customer_data: Updated customer data
+        db: Async database session
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        Customer: Updated customer instance
+        
+    Raises:
+        HTTPException: 403 if customer tries to update another customer's data
+    """
     if payload.get("role") == 3 and payload.get("user_id") != id:
         raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
     
@@ -190,6 +317,22 @@ async def update_customer(id: str, customer_data: CustomerUpdate, db: Session, p
 
 
 async def delete_customer(id: str, db: Session, payload: dict):
+    """
+    Delete a customer account.
+    
+    Enforces access control - customers can only delete their own account.
+    
+    Args:
+        id: Customer ID to delete
+        db: Async database session
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 403 if customer tries to delete another customer's account
+    """
     if payload.get("role") == 3 and payload.get("user_id") != id:
         raise HTTPException(status_code=403, detail="Operation not permitted. Trying to access data of other customers.")
     

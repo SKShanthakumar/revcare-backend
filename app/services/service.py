@@ -14,7 +14,15 @@ from app.services import crud
 async def update_service_price_chart(db: Session, service_id: int, new_price_chart_data: list):
     """
     Update the price chart for a given service.
-    Handles add, update, and delete logic.
+    
+    Handles add, update, and delete logic for price chart entries.
+    Compares existing price charts with new data and performs necessary updates.
+    Caller function should commit the transaction.
+    
+    Args:
+        db: Async database session
+        service_id: Service ID to update price chart for
+        new_price_chart_data: List of price chart entries with car_class_id and price
     """
 
     # Step 1: Fetch existing price chart records for the service
@@ -56,6 +64,16 @@ async def update_service_price_chart(db: Session, service_id: int, new_price_cha
     # db not committed caller function should commit
 
 async def get_fuel_type_models(db: Session, fuel_ids: List[int]):
+    """
+    Get fuel type model instances by IDs.
+    
+    Args:
+        db: Async database session
+        fuel_ids: List of fuel type IDs
+        
+    Returns:
+        list: List of FuelType model instances
+    """
     if not fuel_ids:
         return []
 
@@ -67,6 +85,22 @@ async def get_fuel_type_models(db: Session, fuel_ids: List[int]):
 
 # business logic
 async def create_service(db: Session, data: dict):
+    """
+    Create a new service with price chart and fuel types.
+    
+    Creates a service record, associates fuel types, and creates price chart entries.
+    Returns the service with all related entities loaded.
+    
+    Args:
+        db: Async database session
+        data: Dictionary containing service data, fuel_type_ids, and price_chart
+        
+    Returns:
+        Service: Created service instance with related entities loaded
+        
+    Raises:
+        HTTPException: 400 if there's an integrity error (invalid foreign key reference)
+    """
     # check customer trying to access other customer's address - if condition also bypasses admin
     filtered_data = filter_data_for_model(Service, data)
     service = Service(**filtered_data)
@@ -114,6 +148,25 @@ async def create_service(db: Session, data: dict):
 
 
 async def update_service(db: Session, service_id: int, update_schema: ServiceUpdateWithForeignData):
+    """
+    Update a service including price chart and fuel types.
+    
+    Updates service fields, price chart, and fuel type associations.
+    Can update any combination of service fields, price chart, or fuel types.
+    
+    Args:
+        db: Async database session
+        service_id: Service ID to update
+        update_schema: Update schema with service fields, price_chart, and fuel_type_ids
+        
+    Returns:
+        Service: Updated service instance (currently returns None, may need fix)
+        
+    Raises:
+        HTTPException: 
+            - 404 if service is not found
+            - 400 if there's duplicate or invalid data
+    """
     service_base_schema = ServiceUpdate(**update_schema.model_dump(exclude_none=True))
     new_data = service_base_schema.model_dump(exclude_none=True)
 
@@ -152,6 +205,20 @@ async def update_service(db: Session, service_id: int, update_schema: ServiceUpd
 
 
 async def create_review(review: ServiceReviewCreate, db: Session, payload: dict):
+    """
+    Create a service review.
+    
+    Args:
+        review: Service review creation data
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        ServiceReview: Created review instance
+        
+    Raises:
+        HTTPException: 403 if user is not a customer
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can add reviews")
@@ -161,6 +228,21 @@ async def create_review(review: ServiceReviewCreate, db: Session, payload: dict)
     return await crud.create_record(db, data, ServiceReview)
 
 async def update_review_by_id(service_id: int, review: ServiceReviewUpdate, db: Session, payload: dict):
+    """
+    Update a service review.
+    
+    Args:
+        service_id: Service ID for the review
+        review: Updated review data
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        ServiceReview: Updated review instance
+        
+    Raises:
+        HTTPException: 403 if user is not a customer
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can update reviews")
@@ -173,6 +255,20 @@ async def update_review_by_id(service_id: int, review: ServiceReviewUpdate, db: 
     return await crud.update_record_by_composite_key(db, pk, review.model_dump(exclude_none=True), ServiceReview)
 
 async def delete_review_by_id(service_id: int, db: Session, payload: dict):
+    """
+    Delete a service review.
+    
+    Args:
+        service_id: Service ID for the review
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 403 if user is not a customer
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can delete reviews")

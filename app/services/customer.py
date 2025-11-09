@@ -5,6 +5,22 @@ from app.services import crud
 from app.models import Cart, Favourite
 
 async def add_to_cart(service_id: int, db: Session, payload: dict):
+    """
+    Add a service to customer's cart.
+    
+    Args:
+        service_id: ID of the service to add
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a customer
+            - 400 if service is already in cart or service doesn't exist
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can add services to cart")
@@ -25,6 +41,22 @@ async def add_to_cart(service_id: int, db: Session, payload: dict):
         raise
 
 async def remove_from_cart(service_id: int, db: Session, payload: dict):
+    """
+    Remove a service from customer's cart.
+    
+    Args:
+        service_id: ID of the service to remove
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a customer
+            - 400 if service is not in cart
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can remove services from cart")
@@ -47,6 +79,22 @@ async def remove_from_cart(service_id: int, db: Session, payload: dict):
 
 
 async def add_to_favourite(service_id: int, db: Session, payload: dict):
+    """
+    Add a service to customer's favourites.
+    
+    Args:
+        service_id: ID of the service to add
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a customer
+            - 400 if service is already in favourites or service doesn't exist
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can add services to favourite")
@@ -67,6 +115,22 @@ async def add_to_favourite(service_id: int, db: Session, payload: dict):
         raise
 
 async def remove_from_favourite(service_id: int, db: Session, payload: dict):
+    """
+    Remove a service from customer's favourites.
+    
+    Args:
+        service_id: ID of the service to remove
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a customer
+            - 400 if service is not in favourites
+    """
     customer_id = payload.get("user_id")
     if not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Operation not permitted. Only Customers can remove services from favourite")

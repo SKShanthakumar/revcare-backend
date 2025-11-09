@@ -7,6 +7,12 @@ from fastapi_mail import ConnectionConfig
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
+    """
+    Application settings loaded from environment variables.
+    
+    Contains configuration for database connections, authentication, payment gateway,
+    email service, and backup settings.
+    """
     postgresql_url: str
     secret_key: str
     refresh_secret_key: str
@@ -38,11 +44,17 @@ class Settings(BaseSettings):
     max_backup_age_days: int = 30
 
     class Config:
+        """Pydantic configuration for Settings class."""
         env_file = str(PROJECT_ROOT / ".env")
 
 settings = Settings()
 
 class BaseModelWithObjectId(BaseModel):
+    """
+    Base Pydantic model with ObjectId JSON encoding support.
+    
+    Provides automatic conversion of MongoDB ObjectId to string in JSON responses.
+    """
     model_config = ConfigDict(
         json_encoders={ObjectId: lambda v: str(v)},
     )

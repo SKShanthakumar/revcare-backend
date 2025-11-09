@@ -13,14 +13,33 @@ from app.core.config import settings
 
 
 class BackupService:
-    """Service for handling database backups and recovery"""
+    """
+    Service for handling database backups and recovery.
+    
+    Provides methods to create, restore, list, and delete backups for both
+    PostgreSQL and MongoDB databases.
+    """
     
     def __init__(self, backup_dir: str = "backups"):
+        """
+        Initialize BackupService with backup directory.
+        
+        Args:
+            backup_dir: Directory path for storing backups (default: "backups")
+        """
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(exist_ok=True, parents=True)
         
     def _get_backup_path(self, backup_name: str) -> Path:
-        """Get full path for a backup"""
+        """
+        Get full path for a backup file or directory.
+        
+        Args:
+            backup_name: Name of the backup file or directory
+            
+        Returns:
+            Path: Full path to the backup
+        """
         return self.backup_dir / backup_name
     
     async def create_postgresql_backup(
@@ -29,9 +48,20 @@ class BackupService:
         backup_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Create PostgreSQL backup using pg_dump
+        Create PostgreSQL backup using SQLAlchemy.
         
-        For Supabase, we'll use SQLAlchemy to export data as SQL
+        Exports all tables from the database as SQL INSERT statements.
+        Creates a timestamped backup file if backup_name is not provided.
+        
+        Args:
+            db_session: Async database session
+            backup_name: Optional backup file name (default: auto-generated with timestamp)
+            
+        Returns:
+            dict: Backup information including name, path, size, and creation time
+            
+        Raises:
+            HTTPException: 500 if backup creation fails
         """
         if not backup_name:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -129,7 +159,20 @@ class BackupService:
         backup_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Create MongoDB backup by exporting collections to JSON
+        Create MongoDB backup by exporting collections to JSON.
+        
+        Exports all collections to JSON files and creates a metadata file.
+        Creates a timestamped backup directory if backup_name is not provided.
+        
+        Args:
+            mongo_client: MongoDB client or database instance
+            backup_name: Optional backup directory name (default: auto-generated with timestamp)
+            
+        Returns:
+            dict: Backup information including name, path, collections, document counts, size, and creation time
+            
+        Raises:
+            HTTPException: 500 if backup creation fails
         """
         if not backup_name:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -219,7 +262,21 @@ class BackupService:
         db_session: AsyncSession,
         mongo_client: AsyncIOMotorDatabase
     ) -> Dict[str, Any]:
-        """Create backup for both databases"""
+        """
+        Create backup for both PostgreSQL and MongoDB databases.
+        
+        Creates backups for both databases with the same timestamp.
+        
+        Args:
+            db_session: Async database session for PostgreSQL
+            mongo_client: MongoDB client or database instance
+            
+        Returns:
+            dict: Combined backup information for both databases
+            
+        Raises:
+            HTTPException: 500 if backup creation fails for either database
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Create PostgreSQL backup
@@ -243,7 +300,15 @@ class BackupService:
         }
     
     def list_backups(self) -> Dict[str, List[Dict[str, Any]]]:
-        """List all available backups"""
+        """
+        List all available backups for both databases.
+        
+        Scans the backup directory and returns lists of PostgreSQL and MongoDB backups
+        with metadata including name, path, size, and creation time.
+        
+        Returns:
+            dict: Dictionary with 'postgresql' and 'mongodb' keys containing lists of backup info
+        """
         postgresql_backups = []
         mongodb_backups = []
         
@@ -296,7 +361,24 @@ class BackupService:
         db_session: AsyncSession,
         backup_name: str
     ) -> Dict[str, Any]:
-        """Restore PostgreSQL database from backup"""
+        """
+        Restore PostgreSQL database from backup.
+        
+        Restores database by executing SQL statements from the backup file.
+        WARNING: This will delete all existing data in the database.
+        
+        Args:
+            db_session: Async database session
+            backup_name: Name of the backup file to restore from
+            
+        Returns:
+            dict: Restore information including backup name and statements executed
+            
+        Raises:
+            HTTPException: 
+                - 404 if backup file is not found
+                - 500 if restore fails
+        """
         backup_path = self._get_backup_path(backup_name)
         
         if not backup_path.exists():
@@ -349,7 +431,26 @@ class BackupService:
         backup_name: str,
         drop_existing: bool = True
     ) -> Dict[str, Any]:
-        """Restore MongoDB database from backup"""
+        """
+        Restore MongoDB database from backup.
+        
+        Restores collections from JSON files in the backup directory.
+        WARNING: This will delete all existing data in collections if drop_existing is True.
+        
+        Args:
+            mongo_client: MongoDB client or database instance
+            backup_name: Name of the backup directory to restore from
+            drop_existing: If True, drop existing collections before restoring (default: True)
+            
+        Returns:
+            dict: Restore information including backup name, restored collections, and document counts
+            
+        Raises:
+            HTTPException: 
+                - 404 if backup directory is not found
+                - 400 if backup is invalid (metadata.json not found)
+                - 500 if restore fails
+        """
         backup_path = self._get_backup_path(backup_name)
         
         if not backup_path.exists():
@@ -429,7 +530,23 @@ class BackupService:
         postgresql_backup: str,
         mongodb_backup: str
     ) -> Dict[str, Any]:
-        """Restore both databases"""
+        """
+        Restore both PostgreSQL and MongoDB databases from backups.
+        
+        WARNING: This will delete all existing data in both databases.
+        
+        Args:
+            db_session: Async database session for PostgreSQL
+            mongo_client: MongoDB client or database instance
+            postgresql_backup: Name of the PostgreSQL backup file
+            mongodb_backup: Name of the MongoDB backup directory
+            
+        Returns:
+            dict: Combined restore information for both databases
+            
+        Raises:
+            HTTPException: 500 if restore fails for either database
+        """
         
         # Restore PostgreSQL
         pg_result = await self.restore_postgresql_backup(
@@ -451,7 +568,21 @@ class BackupService:
         }
     
     def delete_backup(self, backup_name: str, backup_type: str) -> Dict[str, Any]:
-        """Delete a backup file or directory"""
+        """
+        Delete a backup file or directory.
+        
+        Args:
+            backup_name: Name of the backup file or directory to delete
+            backup_type: Type of backup ('postgresql' or 'mongodb')
+            
+        Returns:
+            dict: Deletion confirmation with backup name and deletion time
+            
+        Raises:
+            HTTPException: 
+                - 404 if backup is not found
+                - 500 if deletion fails
+        """
         backup_path = self._get_backup_path(backup_name)
         
         if not backup_path.exists():

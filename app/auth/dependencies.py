@@ -14,8 +14,27 @@ oauth2_scheme = OAuth2PasswordBearer(
     refreshUrl="/api/v1/auth/refresh", 
 )
 
-# Verify token + scopes
 async def validate_token(security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme), db: Session = Depends(get_postgres_db)):
+    """
+    Verify JWT token and validate user permissions/scopes.
+    
+    This function validates the access token, checks if it's blacklisted, retrieves the user,
+    and verifies that the user has the required scopes/permissions for the requested operation.
+    
+    Args:
+        security_scopes: FastAPI SecurityScopes object containing required scopes for the endpoint
+        token: JWT access token from the Authorization header
+        db: Async database session
+        
+    Returns:
+        dict: Dictionary containing user_id, role, user_data, jti, and exp
+        
+    Raises:
+        HTTPException: 
+            - 401 if token is invalid or user credentials cannot be validated
+            - 401 if user lacks required permissions
+            - 403 if token has been revoked/blacklisted
+    """
     payload = decode_access_token(token)
     if payload is None:
         raise HTTPException(

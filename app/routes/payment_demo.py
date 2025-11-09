@@ -13,7 +13,17 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/confirm_booking/{booking_id}", response_class=HTMLResponse)
 async def render_confirm_service_page(request: Request, booking_id: int, access_token: str):
-    """Render simple payment confirmation page."""
+    """
+    Render payment confirmation page for booking service selection.
+    
+    Args:
+        request: FastAPI Request object
+        booking_id: Booking ID
+        access_token: JWT access token for authenticated requests
+        
+    Returns:
+        HTMLResponse: Rendered HTML page for payment confirmation
+    """
     print(access_token)
     return templates.TemplateResponse(
         "confirm_booking.html",
@@ -29,6 +39,18 @@ from app.database.dependencies import get_postgres_db
 
 @router.get("/cash_on_delivery/{booking_id}")
 async def render_cod_page(request: Request, booking_id: int, access_token: str, db: Session = Depends(get_postgres_db)):
+    """
+    Render cash on delivery payment page.
+    
+    Args:
+        request: FastAPI Request object
+        booking_id: Booking ID
+        access_token: JWT access token for authenticated requests
+        db: Database session
+        
+    Returns:
+        HTMLResponse: Rendered HTML page for cash on delivery payment
+    """
     result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == booking_id))
     payment_obj = result.scalar_one_or_none()
     

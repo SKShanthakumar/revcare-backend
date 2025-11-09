@@ -6,6 +6,23 @@ from app.services import crud
 from app.schemas import CustomerCarUpdate, CustomerCarCreate
 
 async def get_customer_cars(db: Session, payload: dict, customer_id: str):
+    """
+    Get customer car(s) with access control.
+    
+    If customer_id is provided, returns cars for that customer (with permission check).
+    Otherwise, returns cars for the logged-in customer.
+    
+    Args:
+        db: Async database session
+        payload: Token payload containing user_id and role
+        customer_id: Optional customer ID to filter by
+        
+    Returns:
+        list: List of CustomerCar instances
+        
+    Raises:
+        HTTPException: 403 if customer tries to access another customer's cars
+    """
     filters = None
     if customer_id is not None:
         if payload.get("role") == 3 and (customer_id != payload.get("user_id")):
@@ -21,6 +38,22 @@ async def get_customer_cars(db: Session, payload: dict, customer_id: str):
 
 
 async def get_customer_car_by_id(customer_car_id: int, db: Session, payload: dict):
+    """
+    Get a customer car by ID with access control.
+    
+    Args:
+        customer_car_id: Customer car ID
+        db: Async database session
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        CustomerCar: Customer car instance
+        
+    Raises:
+        HTTPException: 
+            - 404 if car is not found
+            - 403 if customer tries to access another customer's car
+    """
     customer_car = await crud.get_record_by_primary_key(db, customer_car_id, CustomerCar)
 
     customer_id = payload.get("user_id")
@@ -30,6 +63,20 @@ async def get_customer_car_by_id(customer_car_id: int, db: Session, payload: dic
     return customer_car
 
 async def create_customer_car(customer_car: CustomerCarCreate, db: Session, payload: dict):
+    """
+    Create a new customer car.
+    
+    Args:
+        customer_car: Customer car creation data
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        CustomerCar: Created customer car instance
+        
+    Raises:
+        HTTPException: 403 if user is not a customer
+    """
     customer_id = payload.get("user_id")
     
     if not customer_id.startswith("CST"):
@@ -42,6 +89,23 @@ async def create_customer_car(customer_car: CustomerCarCreate, db: Session, payl
 
 
 async def update_customer_car_by_id(id: int, customer_car: CustomerCarUpdate, db: Session, payload: dict):
+    """
+    Update a customer car.
+    
+    Args:
+        id: Customer car ID to update
+        customer_car: Updated customer car data
+        db: Async database session
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        CustomerCar: Updated customer car instance
+        
+    Raises:
+        HTTPException: 
+            - 404 if car is not found
+            - 403 if customer tries to update another customer's car
+    """
     customer_car_obj = await get_customer_car_by_id(id, db, payload)
     if not customer_car:
         raise HTTPException(status_code=404, detail=f"Car not found.")
@@ -56,6 +120,22 @@ async def update_customer_car_by_id(id: int, customer_car: CustomerCarUpdate, db
 
 
 async def delete_customer_car_by_id(id: int, db: Session, payload: dict):
+    """
+    Delete a customer car.
+    
+    Args:
+        id: Customer car ID to delete
+        db: Async database session
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 404 if car is not found
+            - 403 if customer tries to delete another customer's car
+    """
     customer_car = await get_customer_car_by_id(id, db, payload)
     if not customer_car:
         raise HTTPException(status_code=404, detail="Car not found.")

@@ -23,7 +23,17 @@ async def get_notification_logs(
     payload = Security(validate_token, scopes=["READ:NOTIFICATION_LOG"])
 ):
     """
-    Get notification logs with optional filters
-    Admin can view all logs, or filter by customer/status/type
+    Get notification logs with optional filters.
+    
+    Admin can view all logs, or filter by notification category and limit results.
+    
+    Args:
+        notification_category: Optional notification category ID to filter by
+        limit: Maximum number of logs to return (default: 100)
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        List[NotificationLogResponse]: List of notification logs
     """
     return await notification_service.get_notification_logs(db, notification_category, limit)

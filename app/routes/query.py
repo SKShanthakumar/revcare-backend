@@ -17,7 +17,16 @@ async def create_query(
     payload: QueryCreate,
     db: AsyncIOMotorDatabase = Depends(get_mongo_db),
 ) -> Query:
-    """Create a new customer query."""
+    """
+    Create a new customer query.
+    
+    Args:
+        payload: Query creation data
+        db: MongoDB database session
+        
+    Returns:
+        Query: Created query instance
+    """
     return await create_query_service(db, payload)
 
 
@@ -30,7 +39,19 @@ async def respond_to_query(
     db: AsyncIOMotorDatabase = Depends(get_mongo_db),
     pg_db: Session = Depends(get_postgres_db)
 ) -> Query:
-    """Respond to a specific customer query (admin only)."""
+    """
+    Respond to a specific customer query (admin only).
+    
+    Args:
+        query_id: Query ID to respond to
+        payload: Query response data
+        user_payload: Validated token payload
+        db: MongoDB database session
+        pg_db: PostgreSQL database session
+        
+    Returns:
+        Query: Updated query with response
+    """
     return await respond_to_query_service(db, pg_db, query_id, payload, user_payload)
 
 
@@ -40,5 +61,14 @@ async def get_all_queries(
     user_payload: dict = Security(validate_token, scopes=["READ:QUERIES"]),
     db: AsyncIOMotorDatabase = Depends(get_mongo_db),
 ) -> List[Query]:
-    """Retrieve all customer queries."""
+    """
+    Retrieve all customer queries.
+    
+    Args:
+        user_payload: Validated token payload
+        db: MongoDB database session
+        
+    Returns:
+        List[Query]: List of all customer queries
+    """
     return await get_all_queries_service(db)

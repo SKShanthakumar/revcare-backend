@@ -137,7 +137,15 @@ END $$;
 """
 
 async def init_custom_triggers(db: Session):
-    """Create triggers and sequences"""
+    """
+    Create database triggers and sequences for auto-generating user IDs.
+    
+    Creates triggers for customers (CST), admins (ADM), and mechanics (MEC)
+    to automatically generate unique IDs with proper formatting.
+    
+    Args:
+        db: Async database session
+    """
     try:
         await db.execute(text(unique_id_trigger_script))
         await db.commit()
@@ -147,7 +155,15 @@ async def init_custom_triggers(db: Session):
         print(f"Skipping trigger setup: {e}")
 
 async def init_delete_triggers(db: Session):
-    """Create delete triggers"""
+    """
+    Create database triggers for cascading user deletion.
+    
+    Creates triggers that automatically delete user records from the users table
+    when corresponding customer, admin, or mechanic records are deleted.
+    
+    Args:
+        db: Async database session
+    """
     try:
         await db.execute(text(delete_users_trigger_script))
         await db.commit()
@@ -157,7 +173,15 @@ async def init_delete_triggers(db: Session):
         print(f"Skipping delete trigger setup: {e}")
 
 async def seed_rbac(db: Session):
-    """Seed user roles (only if not already seeded)"""
+    """
+    Seed role-based access control (RBAC) data.
+    
+    Seeds user roles (admin, mechanic, customer), permissions, and
+    role-permission relationships. Only seeds if data doesn't already exist.
+    
+    Args:
+        db: Async database session
+    """
     try:
         result = await db.execute(select(func.count()).select_from(Role))
         existing_roles = result.scalar()
@@ -223,6 +247,15 @@ async def seed_rbac(db: Session):
         traceback.print_exc()
 
 async def seed_users(db: Session):
+    """
+    Seed initial user accounts for testing.
+    
+    Creates sample admin, customer, and mechanic accounts if no users exist.
+    Includes: Admin01, two customers (Surya, Rahul), and one mechanic (Arunachalam).
+    
+    Args:
+        db: Async database session
+    """
     try:
         result = await db.execute(select(func.count()).select_from(User))
         user_count = result.scalar()
@@ -269,6 +302,15 @@ async def seed_users(db: Session):
         print(f"Error seeding User data: {e}")
 
 async def seed_addresses(db: Session):
+    """
+    Seed areas and customer addresses.
+    
+    Seeds Chennai areas with pincodes and creates sample addresses for
+    existing customers. Only seeds if data doesn't already exist.
+    
+    Args:
+        db: Async database session
+    """
     try:
         # Seed Areas
         result = await db.execute(select(func.count()).select_from(Area))
@@ -498,6 +540,15 @@ async def seed_car_utils(db: Session):
         print(f"Error seeding Car utils data: {e}")
 
 async def seed_service_categories(db: Session):
+    """
+    Seed service categories.
+    
+    Creates all service categories (Service Packages, Engine Services, Brake Services, etc.)
+    if they don't already exist in the database.
+    
+    Args:
+        db: Async database session
+    """
     try:
         # Check if service categories already exist
         result = await db.execute(select(func.count()).select_from(ServiceCategory))
@@ -638,6 +689,15 @@ async def seed_price_chart(db: Session):
         raise
 
 async def seed_services(db: Session):
+    """
+    Seed service records.
+    
+    Creates all service records from SERVICES_DATA if they don't already exist.
+    Services include Basic Service, Oil Change, Brake Pad Replacement, etc.
+    
+    Args:
+        db: Async database session
+    """
     try:
         # Check if services already exist
         result = await db.execute(select(func.count()).select_from(Service))

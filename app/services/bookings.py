@@ -26,7 +26,19 @@ from app.utilities.data_utils import get_gst_percent
 
 # Helper Functions
 async def get_status_id_by_name(db: Session, status_name: str) -> int:
-    """Get status ID by status name"""
+    """
+    Get status ID by status name.
+    
+    Args:
+        db: Async database session
+        status_name: Name of the status to look up
+        
+    Returns:
+        int: Status ID
+        
+    Raises:
+        HTTPException: 404 if status name is not found
+    """
     result = await db.execute(select(Status).where(Status.name == status_name))
     status = result.scalar_one_or_none()
     if not status:
@@ -35,7 +47,26 @@ async def get_status_id_by_name(db: Session, status_name: str) -> int:
 
 
 async def get_or_create_address(db: Session, customer_id: str, address_id: Optional[int], address_data: Optional[Dict]) -> int:
-    """Get existing address or create new one"""
+    """
+    Get existing address or create a new one.
+    
+    If address_id is provided, verifies it belongs to the customer and returns it.
+    If address_data is provided, creates a new address and returns its ID.
+    
+    Args:
+        db: Async database session
+        customer_id: Customer ID to associate address with
+        address_id: Optional existing address ID
+        address_data: Optional dictionary with address data to create new address
+        
+    Returns:
+        int: Address ID
+        
+    Raises:
+        HTTPException: 
+            - 404 if address_id is provided but not found or doesn't belong to customer
+            - 400 if neither address_id nor address_data is provided
+    """
     if address_id:
         # Verify address belongs to customer
         result = await db.execute(
@@ -60,7 +91,17 @@ async def get_or_create_address(db: Session, customer_id: str, address_id: Optio
 
 
 async def update_booking_status(db: Session, booking: Booking, status_name: str):
-    """Update booking status"""
+    """
+    Update booking status and set completion time if delivered.
+    
+    Args:
+        db: Async database session
+        booking: Booking instance to update
+        status_name: Name of the new status
+        
+    Raises:
+        HTTPException: 400 if status name is invalid
+    """
     status_id = await get_status_id_by_name(db, status_name)
     if not status_id:
         raise HTTPException(status_code=400, detail="Invalid booking status update.")
@@ -71,6 +112,19 @@ async def update_booking_status(db: Session, booking: Booking, status_name: str)
 
 
 async def get_booking_progress_history(db: Session, booking: Booking):
+    """
+    Get validated booking progress history and analysis.
+    
+    Collects all validated progress updates and analysis reports for a booking
+    and formats them into a chronological service history.
+    
+    Args:
+        db: Async database session
+        booking: Booking instance with loaded booking_progress and booking_analysis
+        
+    Returns:
+        list: List of dictionaries containing status, description, images, mechanic, and timestamp
+    """
     service_history = []
     for progress in booking.booking_progress:
         if progress.validated:
@@ -100,13 +154,41 @@ async def get_booking_progress_history(db: Session, booking: Booking):
 
 
 def get_latest_progress(booking_progress_list):
+    """
+    Get the most recent progress update from a list.
+    
+    Args:
+        booking_progress_list: List of BookingProgress objects
+        
+    Returns:
+        BookingProgress: The most recently created progress update
+    """
     return sorted(booking_progress_list, key=lambda x: x.created_at, reverse=True)[0]
 
 def get_latest_assignment(booking_assignment_list):
+    """
+    Get the most recent assignment from a list.
+    
+    Args:
+        booking_assignment_list: List of BookingAssignment objects
+        
+    Returns:
+        BookingAssignment: The most recently assigned booking assignment
+    """
     return sorted(booking_assignment_list, key=lambda x: x.assigned_at, reverse=True)[0]
 
 
 async def cancelled_booking_returned(db: Session, booking_id: int):
+    """
+    Check if a cancelled booking has been returned (drop update exists).
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to check
+        
+    Returns:
+        bool: True if cancelled drop update exists, False otherwise
+    """
     result = await db.execute(
         select(BookingProgress)
         .join(BookingProgress.status)
@@ -121,6 +203,16 @@ async def cancelled_booking_returned(db: Session, booking_id: int):
 
 
 async def cancelled_drop_assigned(db: Session, booking_id: int):
+    """
+    Check if a cancelled booking has a drop assignment.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to check
+        
+    Returns:
+        bool: True if cancelled drop assignment exists, False otherwise
+    """
     result = await db.execute(
         select(BookingAssignment)
         .join(BookingAssignment.booking)
@@ -136,8 +228,19 @@ async def cancelled_drop_assigned(db: Session, booking_id: int):
     return assignment_obj is not None
 
 
-# get condensed status for customer view
 def get_customer_status_mapping(booking: Booking):
+    """
+    Get condensed status mapping for customer view.
+    
+    Maps internal booking statuses to simplified customer-facing statuses.
+    Used to provide a cleaner status representation for customers.
+    
+    Args:
+        booking: Booking instance with booking_progress loaded
+        
+    Returns:
+        dict: Mapping of internal status names to customer-facing status names
+    """
     latest_update = get_latest_progress(booking.booking_progress)
     return {
         "booked": "booked",
@@ -155,18 +258,18 @@ def get_customer_status_mapping(booking: Booking):
 
 async def confirm_selected_services(db: Session, booking: Booking, selected_ids: Set[int], confirmed_status_id: int, rejected_status_id: int) -> None:
     """
-    Update booking services based on customer selection.
-    Confirms selected services and rejects the rest.
-
+    Confirm selected services and reject unselected services for a booking.
+    
+    Updates booked services status to 'confirmed' for selected services and
+    'rejected' for services not in the selection. Also handles booking recommendations
+    by creating new booked services for recommended services that were selected.
+    
     Args:
-        db (AsyncSession): SQLAlchemy async database session
-        booking (Booking): Booking object containing booked and recommended services
-        selected_ids (Set[int]): IDs of services selected by the customer
-        confirmed_status_id (int): Status ID for confirmed services
-        rejected_status_id (int): Status ID for rejected services
-
-    Returns:
-        None
+        db: Async database session
+        booking: Booking instance with booked_services and booking_recommendations loaded
+        selected_ids: Set of service IDs that were selected by the customer
+        confirmed_status_id: Status ID for confirmed services
+        rejected_status_id: Status ID for rejected services
     """
     booked_services = {bs.service_id: bs for bs in booking.booked_services}
     recommendations = {br.service_id: br for br in booking.booking_recommendations}
@@ -188,6 +291,16 @@ async def confirm_selected_services(db: Session, booking: Booking, selected_ids:
 
 
 def check_all_booked_services_completed(booked_services: List[BookedService], confirmed_status_id: int):
+    """
+    Check if all booked services with confirmed status are marked as completed.
+    
+    Args:
+        booked_services: List of BookedService instances
+        confirmed_status_id: Status ID for confirmed services
+        
+    Returns:
+        bool: True if all confirmed services are completed, False otherwise
+    """
     completed = True
     for service in booked_services:
         if service.status_id == confirmed_status_id:
@@ -196,6 +309,20 @@ def check_all_booked_services_completed(booked_services: List[BookedService], co
 
 
 async def add_cancellation_fee(db: Session, booking: Booking, cancellation_fee: float):
+    """
+    Add cancellation fee as an offline payment to a booking.
+    
+    Creates an offline payment record with pending status for the cancellation fee,
+    including GST calculation, and associates it with the booking.
+    
+    Args:
+        db: Async database session
+        booking: Booking instance to add cancellation fee to
+        cancellation_fee: Cancellation fee amount
+        
+    Returns:
+        float: Total amount including GST
+    """
     pending_status_id = await get_status_id_by_name(db, "pending")
     result = await db.execute(select(PaymentMethod).where(PaymentMethod.name.ilike("offline")))
     payment_method_obj = result.scalar_one_or_none()
@@ -219,6 +346,16 @@ async def add_cancellation_fee(db: Session, booking: Booking, cancellation_fee: 
 
 
 async def offline_payment_completed(db: Session, booking_id: int):
+    """
+    Check if any offline payment for a booking has been completed successfully.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to check payments for
+        
+    Returns:
+        bool: True if at least one offline payment has status "success", False otherwise
+    """
     result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == booking_id))
     booking_payments = result.scalars().all()
     for payment in booking_payments:
@@ -228,6 +365,16 @@ async def offline_payment_completed(db: Session, booking_id: int):
 
 
 async def get_online_payment_status(db: Session, booking_id: int):
+    """
+    Check if any online payment for a booking has been completed successfully.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to check payments for
+        
+    Returns:
+        tuple: (bool, float) - (True if payment successful, amount_paid) or (False, -1)
+    """
     result = await db.execute(select(OnlinePayment).where(OnlinePayment.booking_id == booking_id))
     booking_payments = result.scalars().all()
     for payment in booking_payments:
@@ -240,7 +387,25 @@ async def get_online_payment_status(db: Session, booking_id: int):
 
 # common functions
 async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
-    """Get detailed booking by ID"""
+    """
+    Get detailed booking information by ID with access control.
+    
+    Retrieves booking with all related entities (customer, car, addresses, progress, etc.)
+    and calculates pricing including GST. Returns customer-friendly status for customers.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to retrieve
+        payload: Token payload containing user_id and role
+        
+    Returns:
+        dict: Detailed booking information with all related data
+        
+    Raises:
+        HTTPException: 
+            - 404 if booking is not found
+            - 403 if customer tries to access another customer's booking
+    """
     booking: Booking = await crud.get_one_record(
         db=db,
         model=Booking,
@@ -325,7 +490,28 @@ async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
 
 # Customer Functions
 async def create_booking(db: Session, booking_data: BookingCreate, payload: dict):
-    """Customer creates a new booking"""
+    """
+    Create a new booking for a customer.
+    
+    Validates customer ownership of car, calculates required service time,
+    creates or uses existing addresses, and creates booking with booked services.
+    Sends booking confirmation notification.
+    
+    Args:
+        db: Async database session
+        booking_data: Booking creation data including services, addresses, dates
+        payload: Token payload containing user_id
+        
+    Returns:
+        dict: Created booking information
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a customer or doesn't own the car
+            - 404 if service or car is not found
+            - 403 if insufficient time between pickup and drop dates
+            - 400 if there's invalid data or foreign key constraint
+    """
     customer_id = payload.get("user_id")
     if not customer_id or not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Only customers can create bookings.")
@@ -438,7 +624,22 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
 
 
 async def get_customer_bookings(db: Session, payload: dict):
-    """Get all bookings for a customer with grouped status"""
+    """
+    Get all bookings for a customer with simplified status mapping.
+    
+    Retrieves all bookings for the logged-in customer and formats them
+    with customer-friendly status names and price quote validation status.
+    
+    Args:
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        list: List of booking summaries with customer view format
+        
+    Raises:
+        HTTPException: 403 if user is not a customer
+    """
     customer_id = payload.get("user_id")
     if not customer_id or not customer_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Only customers can view their bookings")
@@ -479,7 +680,30 @@ async def get_customer_bookings(db: Session, payload: dict):
 
 
 async def customer_confirm_services(db: Session, booking_id: int, selection: CustomerServiceSelection, payload: dict):
-    """Customer confirms services after analysis"""
+    """
+    Customer confirms selected services after analysis and initiates payment.
+    
+    Validates booking status, calculates total price with GST, creates payment record
+    (online or offline), and updates service selections. For online payments, creates
+    Razorpay order and staging record.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to confirm services for
+        selection: Customer service selection with service IDs and payment method
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: For online payments, returns Razorpay order details.
+                     For offline payments, returns success message.
+        
+    Raises:
+        HTTPException: 
+            - 403 if booking doesn't belong to customer
+            - 400 if booking is not in 'analysed' status
+            - 400 if payment method is invalid
+            - 500 if pending status is not found
+    """
     customer_id = payload.get("user_id")
     
     # Verify booking belongs to customer
@@ -592,7 +816,26 @@ async def customer_confirm_services(db: Session, booking_id: int, selection: Cus
     
 
 async def cancel_booking(db: Session, booking_id: int, payload: dict):
-    """Customer cancels a booking"""
+    """
+    Cancel a booking with cancellation fee calculation.
+    
+    Cancels a booking based on its current status. Calculates cancellation fees
+    based on completed services for 'in-progress' bookings. Handles refunds for
+    online payments. No fee for 'booked' or 'pickup' status bookings.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to cancel
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: Success message with cancellation fee
+        
+    Raises:
+        HTTPException: 
+            - 403 if booking doesn't belong to customer or is already cancelled
+            - 403 if service is already completed
+    """
     customer_id = payload.get("user_id")
     
     booking = await db.get(Booking, booking_id)
@@ -666,7 +909,25 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
 
 # Admin Functions
 async def get_admin_dashboard_bookings(db: Session, payload: dict, status_id: Optional[int] = None, action_required_filter: Optional[str] = None):
-    """Get all bookings with action indicators for admin"""
+    """
+    Get all bookings with action indicators for admin dashboard.
+    
+    Retrieves bookings with related data (customer, car, progress, analysis, assignments)
+    and determines what actions are required (assign mechanic, validate progress, etc.).
+    Can filter by status and action_required type.
+    
+    Args:
+        db: Async database session
+        payload: Token payload containing role
+        status_id: Optional status ID to filter bookings
+        action_required_filter: Optional filter for action type ("assign", "validate", "none")
+        
+    Returns:
+        list: List of booking summaries with action indicators
+        
+    Raises:
+        HTTPException: 403 if user is not an admin
+    """
     user_role = payload.get("role")
     if user_role in [2, 3]:
         raise HTTPException(status_code=403, detail="Insufficient Permissions.")
@@ -809,7 +1070,28 @@ async def get_admin_dashboard_bookings(db: Session, payload: dict, status_id: Op
 
 
 async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate):
-    """Admin assigns mechanic to a booking"""
+    """
+    Assign a mechanic to a booking for a specific assignment type.
+    
+    Validates booking status, mechanic qualifications, and assignment type.
+    Updates booking status based on assignment type (pickup, analysis, drop, service).
+    Sends notification to the assigned mechanic.
+    
+    Args:
+        db: Async database session
+        assignment_data: Assignment data with booking_id, mechanic_id, and assignment_type_id
+        
+    Returns:
+        MechanicAssignmentResponse: Created assignment information
+        
+    Raises:
+        HTTPException: 
+            - 404 if booking, assignment type, or mechanic is not found
+            - 400 if previous progress is not validated
+            - 400 if mechanic is already assigned
+            - 404 if mechanic is not qualified for the assignment type
+            - 400 if invalid status transition
+    """
     booking = await db.get(Booking, assignment_data.booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
@@ -882,7 +1164,22 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
 
 # Mechanic Functions
 async def get_mechanic_assignments(db: Session, payload: dict):
-    """Get all assignments for a mechanic"""
+    """
+    Get all assignments for the logged-in mechanic.
+    
+    Retrieves all booking assignments for the mechanic, excluding assignments
+    for cancelled bookings (except drop assignments for cancelled bookings).
+    
+    Args:
+        db: Async database session
+        payload: Token payload containing user_id
+        
+    Returns:
+        list: List of assignment information with booking details
+        
+    Raises:
+        HTTPException: 403 if user is not a mechanic or admin
+    """
     mechanic_id = payload.get("user_id")
     if not mechanic_id or mechanic_id.startswith("CST"):
         raise HTTPException(status_code=403, detail="Only mechanics or admin can view assignments")
@@ -921,7 +1218,27 @@ async def get_mechanic_assignments(db: Session, payload: dict):
 
 
 async def create_progress_update(db: Session, progress_data: BookingProgressCreate, payload: dict):
-    """Mechanic creates progress update"""
+    """
+    Create a progress update for a booking.
+    
+    Allows mechanics to update booking progress (pickup, received, out for delivery, delivered, cancelled).
+    Marks services as completed for 'in-progress' status. Updates booking status and assignment status.
+    Validates payment for offline payments before delivery.
+    
+    Args:
+        db: Async database session
+        progress_data: Progress update data with description, images, and service IDs
+        payload: Token payload containing user_id
+        
+    Returns:
+        BookingProgress: Created progress update
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a mechanic or doesn't own the assignment
+            - 404 if booking is not found or progress already exists
+            - 400 if invalid status transition or payment not completed for offline payments
+    """
     mechanic_id = payload.get("user_id")
     if not mechanic_id or not mechanic_id.startswith("MEC"):
         raise HTTPException(status_code=403, detail="Only mechanics can create progress updates.")
@@ -1011,7 +1328,28 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
 
 
 async def create_analysis(db: Session, analysis_data: BookingAnalysisCreate, payload: dict):
-    """Mechanic creates analysis report"""
+    """
+    Create an analysis report for a booking.
+    
+    Allows mechanics to create analysis reports with price quotes for all booked services
+    and recommended services. Updates booked service prices and creates recommendations.
+    Updates booking status to 'analysed'.
+    
+    Args:
+        db: Async database session
+        analysis_data: Analysis data with description, recommendation, price quotes, and recommended services
+        payload: Token payload containing user_id
+        
+    Returns:
+        BookingAnalysis: Created analysis report
+        
+    Raises:
+        HTTPException: 
+            - 403 if user is not a mechanic or doesn't own the assignment
+            - 404 if booking is not found
+            - 400 if booking is not in 'analysis' status
+            - 400 if price quotes are not provided for all booked services
+    """
     mechanic_id = payload.get("user_id")
     if not mechanic_id or not mechanic_id.startswith("MEC"):
         raise HTTPException(status_code=403, detail="Only mechanics can create analysis")
@@ -1118,7 +1456,28 @@ async def create_analysis(db: Session, analysis_data: BookingAnalysisCreate, pay
 
 
 async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: CashOnDelivery, payload: dict):
-    """Customer confirms services after analysis"""
+    """
+    Receive cash on delivery payment for a booking.
+    
+    Allows mechanics assigned to drop assignment to receive payment for offline payments.
+    Can process offline payment directly or create online payment order if customer wants to pay online.
+    Sends invoice notification after successful offline payment.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID to receive payment for
+        request_body: Cash on delivery data with payment method
+        payload: Token payload containing user_id
+        
+    Returns:
+        JSONResponse: For online payments, returns Razorpay order details.
+                     For offline payments, returns success message.
+        
+    Raises:
+        HTTPException: 
+            - 403 if mechanic is not assigned to drop or payment already completed
+            - 400 if booking is not in valid status or payment method is invalid
+    """
     mechanic_id = payload.get("user_id")
     
     # Verify booking belongs to customer
@@ -1203,7 +1562,25 @@ async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: C
 
 # Admin validation functions
 async def update_progress(db: Session, progress_id: int, update_data: BookingProgressUpdate):
-    """Admin updates progress"""
+    """
+    Update a progress record (admin edit).
+    
+    Allows admin to edit progress update details before validation.
+    Cannot update progress that has already been validated.
+    
+    Args:
+        db: Async database session
+        progress_id: Progress record ID to update
+        update_data: Updated progress data
+        
+    Returns:
+        BookingProgress: Updated progress record
+        
+    Raises:
+        HTTPException: 
+            - 404 if progress record is not found
+            - 400 if progress is already validated
+    """
     result = await db.execute(
         select(BookingProgress)
         .options(selectinload(BookingProgress.booking))
@@ -1235,7 +1612,25 @@ async def update_progress(db: Session, progress_id: int, update_data: BookingPro
 
 
 async def validate_progress(db: Session, progress_id: int):
-    """Admin validates progress update"""
+    """
+    Validate and approve a progress update.
+    
+    Validates progress update, awards score to mechanic based on completed services,
+    updates booking status to 'completed' if all services are done, and sends
+    progress update notification to customer.
+    
+    Args:
+        db: Async database session
+        progress_id: Progress record ID to validate
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 404 if progress record is not found
+            - 400 if progress is already validated
+    """
     result = await db.execute(
         select(BookingProgress)
         .options(selectinload(BookingProgress.booking))
@@ -1281,7 +1676,25 @@ async def validate_progress(db: Session, progress_id: int):
 
 
 async def update_analysis(db: Session, booking_id: int, update_data: BookingAnalysisUpdate):
-    """Admin updates analysis"""
+    """
+    Update an analysis report (admin edit).
+    
+    Allows admin to edit analysis report details before validation.
+    Cannot update analysis that has already been validated.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID (used as analysis primary key)
+        update_data: Updated analysis data
+        
+    Returns:
+        BookingAnalysis: Updated analysis record
+        
+    Raises:
+        HTTPException: 
+            - 404 if analysis record is not found
+            - 400 if analysis is already validated
+    """
     analysis = await db.get(BookingAnalysis, booking_id)
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis record not found")
@@ -1300,7 +1713,24 @@ async def update_analysis(db: Session, booking_id: int, update_data: BookingAnal
 
 
 async def validate_analysis(db: Session, booking_id: int):
-    """Admin validates analysis report"""
+    """
+    Validate and approve an analysis report.
+    
+    Validates analysis report, awards score to mechanic (difficulty 3 for analysis),
+    and marks analysis as validated so it can be sent to customer.
+    
+    Args:
+        db: Async database session
+        booking_id: Booking ID (used as analysis primary key)
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 404 if analysis record is not found
+            - 400 if analysis is already validated
+    """
     analysis = await db.get(BookingAnalysis, booking_id)
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis record not found")
@@ -1319,8 +1749,29 @@ async def validate_analysis(db: Session, booking_id: int):
     return JSONResponse(content={"message": "Analysis validated and sent to customer"})
 
 
-# webhook function for confirming payment and booking
 async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, signature: str):
+    """
+    Webhook handler for confirming payment and booking service selection.
+    
+    Verifies Razorpay payment signature, updates payment status, confirms selected services
+    from staging table, updates booking status to 'in-progress', and sends invoice notification.
+    Used when customer pays online after service selection.
+    
+    Args:
+        db: Async database session
+        order_id: Razorpay order ID
+        payment_id: Razorpay payment ID
+        signature: Razorpay payment signature for verification
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 404 if payment record or order staging is not found
+            - 400 if payment signature is invalid
+            - 500 if payment verification fails
+    """
     # fetch payment object
     result = await db.execute(
         select(OnlinePayment).where(OnlinePayment.razorpay_order_id == order_id)
@@ -1380,8 +1831,29 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     
     return JSONResponse(content={"message": "Payment successful."})
 
-# webhook function for cash on delivery
 async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, signature: str):
+    """
+    Webhook handler for confirming cash on delivery payment.
+    
+    Verifies Razorpay payment signature for COD orders, updates online payment status,
+    marks offline payment as paid online, and sends invoice notification.
+    Used when customer pays online at the time of delivery instead of cash.
+    
+    Args:
+        db: Async database session
+        order_id: Razorpay order ID
+        payment_id: Razorpay payment ID
+        signature: Razorpay payment signature for verification
+        
+    Returns:
+        JSONResponse: Success message
+        
+    Raises:
+        HTTPException: 
+            - 404 if payment record is not found
+            - 400 if payment signature is invalid
+            - 500 if payment verification fails
+    """
     # fetch payment object
     result = await db.execute(
         select(OnlinePayment).where(OnlinePayment.razorpay_order_id == order_id)

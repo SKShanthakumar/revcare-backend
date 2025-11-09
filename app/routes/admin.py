@@ -12,20 +12,75 @@ router = APIRouter()
 
 @router.get("/", response_model=List[AdminResponse])
 async def get_all_admins(db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:ADMINS"])):
+    """
+    Get all admins.
+    
+    Args:
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        List[AdminResponse]: List of admins
+    """
     return await crud.get_all_records(db, Admin)
 
 @router.post("/", response_model=AdminResponse)
 async def create_admin(admin: AdminCreate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["WRITE:ADMINS"])):
+    """
+    Create a new admin.
+    
+    Args:
+        admin: Admin creation data
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        AdminResponse: Created admin
+    """
     return await user.create_user(db, admin, Admin)
     
 @router.get("/{id}", response_model=AdminResponse)
 async def get_admin_by_id(id: str, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:ADMINS"])):
+    """
+    Get an admin by ID.
+    
+    Args:
+        id: Admin ID
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        AdminResponse: Admin information
+    """
     return await crud.get_record_by_primary_key(db, id.strip(), Admin)
 
 @router.put("/{id}", response_model=AdminResponse)
 async def update_admin(id: str, admin_data: AdminUpdate, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["UPDATE:ADMINS"])):
+    """
+    Update an admin.
+    
+    Args:
+        id: Admin ID
+        admin_data: Updated admin data
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        AdminResponse: Updated admin
+    """
     return await admin_service.update_admin(db, payload, id, admin_data)
 
 @router.delete("/{id}", response_class=JSONResponse)
 async def delete_admin(id: str, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["DELETE:ADMINS"])):
+    """
+    Delete an admin.
+    
+    Args:
+        id: Admin ID
+        db: Database session
+        payload: Validated token payload
+        
+    Returns:
+        JSONResponse: Success message
+    """
     return await admin_service.delete_admin(db, payload, id)

@@ -14,5 +14,15 @@ async def update_gst(
     payload: dict = Security(validate_token, scopes=["UPDATE:GST"]),
     db: AsyncIOMotorDatabase = Depends(get_mongo_db)
 ):
-    """Get content by its unique content_id."""
+    """
+    Update GST percentage.
+    
+    Args:
+        percent: New GST percentage value
+        payload: Validated token payload
+        db: MongoDB database session
+        
+    Returns:
+        GstResponse: Updated GST information
+    """
     return await gst.update_gst(db, percent, payload)
