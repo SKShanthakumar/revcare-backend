@@ -119,6 +119,21 @@ scopes = {
     "WRITE:BOOKING_RECOMMENDATIONS": [1, 2],
     "DELETE:BOOKING_RECOMMENDATIONS": [1],
     "UPDATE:BOOKING_RECOMMENDATIONS": [1],
+
+    "READ:CONTENT": [1, 2, 3],
+    "UPDATE:CONTENT": [1],
+
+    "READ:GST": [1, 2, 3],
+    "UPDATE:GST": [1],
+
+    "READ:QUERIES": [1, 3],
+    "WRITE:QUERIES": [1, 3],
+    "UPDATE:QUERIES": [1],
+
+    "READ:NOTIFICATION_LOG": [1],
+    "WRITE:NOTIFICATION_LOG": [1],
+    "DELETE:NOTIFICATION_LOG": [1],
+    "UPDATE:NOTIFICATION_LOG": [1],
 }
 
 def get_all_scopes():

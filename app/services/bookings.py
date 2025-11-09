@@ -20,7 +20,8 @@ from app.schemas import (
     BookingAnalysisCreate, CustomerServiceSelection, BookingProgressUpdate,
     BookingAnalysisUpdate, CashOnDelivery
 )
-from app.services import crud, payment as payment_service
+from app.services import crud, payment as payment_service, notification as notification_service
+from app.utilities.data_utils import get_gst_percent
 
 
 # Helper Functions
@@ -199,7 +200,7 @@ async def add_cancellation_fee(db: Session, booking: Booking, cancellation_fee: 
     result = await db.execute(select(PaymentMethod).where(PaymentMethod.name.ilike("offline")))
     payment_method_obj = result.scalar_one_or_none()
 
-    gst_rate = 0.18
+    gst_rate = await get_gst_percent() * 0.01
     gst = cancellation_fee * gst_rate
 
     payment = OfflinePayment(
@@ -269,7 +270,7 @@ async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
     total_est = sum(bs.est_price for bs in booking.booked_services)
     total_final = sum(bs.price for bs in booking.booked_services if bs.price and bs.status_id == confirmed_status_id) or None
     
-    gst_rate = Decimal('0.18') # 18% GST
+    gst_rate = Decimal(str(await get_gst_percent() * 0.01)) # 18% GST
     if total_final is not None:
         gst_amount = total_final * gst_rate
         total_final += gst_amount
@@ -432,7 +433,7 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
         },
         "created_at": booking.created_at
     }
-
+    await notification_service.send_booking_confirmation(db, booking.id)
     return response
 
 
@@ -526,7 +527,7 @@ async def customer_confirm_services(db: Session, booking_id: int, selection: Cus
         total_price += float(price)
 
     # Add GST
-    gst_rate = 0.18  # 18% GST
+    gst_rate = await get_gst_percent() * 0.01
     gst_amount = total_price * gst_rate
     total_with_gst = total_price + gst_amount
 
@@ -624,7 +625,7 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
         if cancellation_fee < 100:
             cancellation_fee = 100
 
-        gst_rate = 0.18
+        gst_rate = await get_gst_percent() * 0.01
         gst = cancellation_fee * gst_rate
         cancellation_fee_with_gst = cancellation_fee + gst
 
@@ -1195,6 +1196,7 @@ async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: C
         payment_obj.status_id = await get_status_id_by_name(db, "success")
         
         await db.commit()
+        await notification_service.send_invoice(db, booking.id)
         
         return JSONResponse(content={"message": "Payment received successfully"})
 
@@ -1271,6 +1273,7 @@ async def validate_progress(db: Session, progress_id: int):
         mechanic.score = (mechanic.score or 0) + 2  # difficulty 2 for pickup and drop
 
     progress.validated = True
+    await notification_service.send_progress_update(db, progress.booking_id, progress)
     
     await db.commit()
     
@@ -1373,6 +1376,7 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     await update_booking_status(db, booking, "in-progress")
        
     await db.commit()
+    await notification_service.send_invoice(db, booking.id)
     
     return JSONResponse(content={"message": "Payment successful."})
 
@@ -1417,5 +1421,6 @@ async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, s
     payment_obj.paid_online = True
     
     await db.commit()
+    await notification_service.send_invoice(db, payment_obj.booking_id)
     
     return JSONResponse(content={"message": "Payment received successfully"})

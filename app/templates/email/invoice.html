@@ -1,0 +1,255 @@
+<!-- app/templates/email/invoice.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Invoice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-around;
+            align-items: start;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #28a745;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #28a745;
+            margin: 0;
+            font-size: 32px;
+        }
+        .invoice-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .company-info {
+            text-align: right;
+            font-size: 14px;
+            color: #666;
+        }
+        .invoice-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+        .detail-section h3 {
+            color: #28a745;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .detail-section p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
+        }
+        .services-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+        }
+        .services-table thead {
+            background-color: #28a745;
+            color: white;
+        }
+        .services-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        .services-table td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .services-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .warranty-info {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+        .totals-section {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .total-row {
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 0;
+            font-size: 16px;
+        }
+        .total-row.subtotal {
+            color: #555;
+        }
+        .total-row.gst {
+            color: #666;
+            font-size: 14px;
+        }
+        .total-row.final {
+            background-color: #28a745;
+            color: white;
+            padding: 15px 20px;
+            margin-top: 10px;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .total-label {
+            margin-right: 30px;
+        }
+        .total-value {
+            min-width: 150px;
+            text-align: right;
+        }
+        .thank-you {
+            text-align: center;
+            margin: 40px 0 30px 0;
+            padding: 30px;
+            background-color: #e7f5ec;
+            border-radius: 8px;
+        }
+        .thank-you h2 {
+            color: #28a745;
+            margin: 0 0 15px 0;
+        }
+        .thank-you p {
+            color: #555;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>INVOICE</h1>
+                <div class="invoice-badge">Booking #{{ booking_id }}</div>
+            </div>
+        </div>
+
+        <div class="invoice-details">
+            <div class="detail-section">
+                <h3>Invoice Details</h3>
+                <p><strong>Invoice Date:</strong> {{ invoice_date }}</p>
+                <p><strong>Booking ID:</strong> #{{ booking_id }}</p>
+            </div>
+            <div class="detail-section">
+                <h3>Customer Details</h3>
+                <p><strong>Name:</strong> {{ customer_name }}</p>
+                <p><strong>Email:</strong> {{ customer_email }}</p>
+                <p><strong>Phone:</strong> {{ customer_phone }}</p>
+            </div>
+        </div>
+
+        <div class="detail-section" style="padding: 20px; background-color: #f8f9fa; border-radius: 6px; margin-bottom: 30px;">
+            <h3>Vehicle Details</h3>
+            <p><strong>Model:</strong> {{ car_model }}</p>
+            <p><strong>Registration No:</strong> {{ car_reg }}</p>
+        </div>
+
+        <h2 style="color: #28a745; margin-bottom: 20px;">Services Provided</h2>
+        <table class="services-table">
+            <thead>
+                <tr>
+                    <th>Service Description</th>
+                    <th style="text-align: center;">Warranty</th>
+                    <th style="text-align: right;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>
+                        <strong>{{ service.name }}</strong>
+                        <br>
+                        <span class="warranty-info">Warranty: {{ service.warranty }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span style="background-color: #e7f5ec; padding: 4px 10px; border-radius: 4px; font-size: 12px;">
+                            ✓ Covered
+                        </span>
+                    </td>
+                    <td style="text-align: right; font-weight: bold;">
+                        ₹{{ "%.2f"|format(service.price) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals-section">
+            <div class="total-row subtotal">
+                <span class="total-label">Subtotal:</span>
+                <span class="total-value">₹{{ "%.2f"|format(subtotal) }}</span>
+            </div>
+            <div class="total-row gst">
+                <span class="total-label">GST ({{ gst_rate }}%):</span>
+                <span class="total-value">₹{{ "%.2f"|format(gst_amount) }}</span>
+            </div>
+            <div class="total-row final">
+                <span class="total-label">TOTAL AMOUNT:</span>
+                <span class="total-value">₹{{ "%.2f"|format(total) }}</span>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>⚠️ Payment Note:</strong> This invoice has been paid in full. Thank you for your prompt payment.
+        </div>
+
+        <div class="thank-you">
+            <h2>✨ Thank You for Your Business!</h2>
+            <p>We appreciate your trust in our services. Your vehicle has been serviced with care and precision.</p>
+            <p>We look forward to serving you again!</p>
+        </div>
+
+        <div class="note">
+            <strong>📞 Need Help?</strong> If you have any questions about this invoice or our services, please don't hesitate to contact us.
+        </div>
+
+        <div class="footer">
+            <p><strong>Terms & Conditions:</strong> All services are covered under warranty as specified. Please refer to our warranty policy for details.</p>
+            <p>&copy; 2025 RevCare. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

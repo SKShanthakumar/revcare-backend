@@ -1,0 +1,196 @@
+<!-- app/templates/email/progress_update.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Progress Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #17a2b8;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #17a2b8;
+            margin: 0;
+            font-size: 28px;
+        }
+        .update-badge {
+            background-color: #17a2b8;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .booking-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .info-value {
+            color: #333;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-in-progress {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status-completed {
+            background-color: #28a745;
+            color: white;
+        }
+        .status-analysis {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .update-section {
+            background-color: #e7f3ff;
+            border-left: 4px solid #17a2b8;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .update-section h3 {
+            color: #17a2b8;
+            margin-top: 0;
+        }
+        .update-content {
+            color: #333;
+            line-height: 1.8;
+        }
+        .images-section {
+            margin: 20px 0;
+        }
+        .images-section h3 {
+            color: #17a2b8;
+        }
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .image-gallery img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 2px solid #dee2e6;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 14px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Service Progress Update</h1>
+            <div class="update-badge">New Update Available</div>
+        </div>
+
+        <p>Dear <strong>{{ customer_name }}</strong>,</p>
+        <p>We have a new update regarding your vehicle service.</p>
+
+        <div class="booking-info">
+            <div class="info-row">
+                <span class="info-label">Booking ID:</span>
+                <span class="info-value">#{{ booking_id }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Vehicle:</span>
+                <span class="info-value">{{ car_model }} ({{ car_reg }})</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Current Status:</span>
+                <span class="info-value">
+                    <span class="status-badge status-{{ status|lower|replace(' ', '-') }}">
+                        {{ status }}
+                    </span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Updated By:</span>
+                <span class="info-value">{{ mechanic_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Update Time:</span>
+                <span class="info-value timestamp">{{ update_time }}</span>
+            </div>
+        </div>
+
+        <div class="update-section">
+            <h3>Progress Details</h3>
+            <div class="update-content">
+                {{ progress_description }}
+            </div>
+        </div>
+
+        {% if images and images|length > 0 %}
+        <div class="images-section">
+            <h3>Service Images</h3>
+            <div class="image-gallery">
+                {% for image in images %}
+                <img src="{{ image }}" alt="Service progress image">
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="text-align: center; margin: 30px 0;">
+            <p style="color: #666;">Thank you for your patience. We'll keep you updated on your service progress.</p>
+        </div>
+
+        <div class="footer">
+            <p>If you have any questions, please contact us at support@revcare.com or call +91-790458623</p>
+            <p>&copy; 2025 RevCare. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

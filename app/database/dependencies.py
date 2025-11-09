@@ -1,4 +1,5 @@
 from .postgresql import SessionLocal
+from .mongo import get_database as get_mongo_db
 
 async def get_postgres_db():
     """

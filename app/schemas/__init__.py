@@ -17,3 +17,6 @@ from .assignment_type import *
 from .status import *
 from .timeslot import *
 from .bookings import *
+from .content import *
+from .gst import *
+from .query import *

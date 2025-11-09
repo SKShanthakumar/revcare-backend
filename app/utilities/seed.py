@@ -9,7 +9,8 @@ from app.models import (
     Role, Permission, Admin, Mechanic, Customer, User,
     FuelType, Manufacturer, CarClass, Car, Area, Address,
     ServiceCategory, Service, PriceChart, service_fuel_types,
-    Status, AssignmentType, Timeslot, PaymentMethod
+    Status, AssignmentType, Timeslot, PaymentMethod,
+    NotificationCategory
     )
 from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_customer_scopes
 from app.auth import hashing
@@ -785,6 +786,31 @@ async def seed_payment_methods(db: Session):
         await db.rollback()
         print(f"Error seeding timeslot data: {e}")
 
+async def seed_notification_categories(db: Session):
+    """Seed notification categories"""
+    try:
+        result = await db.execute(select(func.count()).select_from(NotificationCategory))
+        category_count = result.scalar()
+        
+        if category_count == 0:
+            categories = [
+                NotificationCategory(name="Booking Confirmation"),
+                NotificationCategory(name="Progress Update"),
+                NotificationCategory(name="Invoice"),
+                NotificationCategory(name="Query Response"),
+            ]
+            
+            db.add_all(categories)
+            await db.commit()
+            print(f"Notification categories seeded successfully!")
+        else:
+            print("Notification categories already exist, skipping seeding.")
+            
+    except Exception as e:
+        await db.rollback()
+        print(f"Error seeding notification categories: {e}")
+
+
 async def run_seed():
     """Run all startup DB seeding logic"""
     async with engine.begin() as conn:
@@ -802,6 +828,7 @@ async def run_seed():
             await seed_all_service_data(db)
             await seed_booking_data(db)
             await seed_payment_methods(db)
-
+            await seed_notification_categories(db)
+            
         finally:
             await db.close()

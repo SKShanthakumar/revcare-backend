@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Response to Your Query</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #6f42c1;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #6f42c1;
+            margin: 0;
+            font-size: 28px;
+        }
+        .response-badge {
+            background-color: #6f42c1;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .query-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #6c757d;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .query-section h3 {
+            color: #6c757d;
+            margin-top: 0;
+            font-size: 16px;
+        }
+        .query-content {
+            color: #555;
+            font-style: italic;
+            line-height: 1.8;
+        }
+        .response-section {
+            background-color: #f3e8ff;
+            padding: 20px;
+            border-left: 4px solid #6f42c1;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .response-section h3 {
+            color: #6f42c1;
+            margin-top: 0;
+            font-size: 16px;
+        }
+        .response-content {
+            color: #333;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        .admin-info {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e7f3ff;
+            border-radius: 6px;
+        }
+        .admin-avatar {
+            width: 50px;
+            height: 50px;
+            background-color: #6f42c1;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        .admin-details {
+            flex: 1;
+        }
+        .admin-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        .admin-role {
+            color: #666;
+            font-size: 14px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 13px;
+            font-style: italic;
+            margin-top: 10px;
+        }
+        .cta-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 25px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .cta-section p {
+            margin: 10px 0;
+            color: #555;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #6f42c1;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .contact-info {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .contact-info h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .contact-info p {
+            margin: 5px 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Query Response</h1>
+            <div class="response-badge">We've Got Your Answer!</div>
+        </div>
+
+        <p>Hello,</p>
+        <p>Thank you for reaching out to us. We have reviewed your query and are pleased to provide you with a response.</p>
+
+        <div class="query-section">
+            <h3>Your Query</h3>
+            <div class="query-content">
+                "{{ query }}"
+            </div>
+        </div>
+
+        <div class="response-section">
+            <h3>Our Response</h3>
+            <div class="response-content">{{ response }}</div>
+            
+            <div class="timestamp">
+                Responded on: {{ response_date }}
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <p><strong>Need to book a service?</strong></p>
+            <p>We're here to help! Book your vehicle service with us today.</p>
+            <a href="#" class="button">Book Now</a>
+        </div>
+
+        <div class="contact-info">
+            <h4>Still Have Questions?</h4>
+            <p>Feel free to reach out to us:</p>
+            <p><strong>Email:</strong> support@revcare.com</p>
+            <p><strong>Phone:</strong> +91-790458623</p>
+            <p><strong>Hours:</strong> Mon-Sat, 9:00 AM - 6:00 PM</p>
+        </div>
+
+        <div class="footer">
+            <p>This email was sent in response to your query. If you didn't submit a query, please contact us immediately.</p>
+            <p>&copy; 2025 RevCare. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

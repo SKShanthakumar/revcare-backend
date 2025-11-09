@@ -39,3 +39,6 @@ from .online_payment import *
 from .payment_method import *
 from .service_selection_stage import *
 from .refund import *
+from .content import *
+from .query import *
+from .notification import *

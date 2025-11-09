@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from app.routes import router
+from app.revare_v1 import router
 from app.middlewares.error_handler import register_exception_handlers
+from app.database.mongo import init_mongo_on_startup, close_mongo_connection
+from app.database import Base, engine
 from app.utilities.seed import run_seed
 from contextlib import asynccontextmanager
 
@@ -10,16 +12,23 @@ async def lifespan(app: FastAPI):
     print("Running startup tasks...")
     try:
         # await run_seed()
-        print("Startup seeding complete.")
+        # async with engine.begin() as conn:
+        #     await conn.run_sync(Base.metadata.create_all)
+        print("Postgre db connected")
+        await init_mongo_on_startup()
+        print("Mongo db connected")
+        
+        print("Startup complete.")
     except Exception as e:
-        print(f"Startup seeding failed: {e}")
+        print(f"Startup failed: {e}")
 
     yield
 
+    await close_mongo_connection()
     print("Server shutting down...")
 
 
-app = FastAPI(title='RevCare API', version='1.0', lifespan=lifespan)
+app = FastAPI(title='RevCare API', lifespan=lifespan)
 
 register_exception_handlers(app)
 
