@@ -75,12 +75,14 @@ class MechanicAssignmentCreate(BaseModel):
     mechanic_id: str
     booking_id: int
     assignment_type_id: int
+    note: str
 
 class MechanicAssignmentResponse(BaseModel):
     id: int
     mechanic_id: str
     booking_id: int
     assignment_type_id: int
+    note: str
     status_id: int
     assigned_at: datetime
     

@@ -28,7 +28,7 @@ async def process_cash_on_delivery(
     return await booking_service.receive_cash_on_delivery(db, booking_id, request_body, payload)
 
 @router.post("/verify-cod")
-async def verify_payment(
+async def verify_cash_on_delivery_payment(
     razorpay_payment_id: str = Form(...),
     razorpay_order_id: str = Form(...),
     razorpay_signature: str = Form(...),

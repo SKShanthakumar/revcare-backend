@@ -214,6 +214,8 @@ async def add_cancellation_fee(db: Session, booking: Booking, cancellation_fee: 
 
     await db.flush()
 
+    return cancellation_fee + gst
+
 
 async def offline_payment_completed(db: Session, booking_id: int):
     result = await db.execute(select(OfflinePayment).where(OfflinePayment.booking_id == booking_id))
@@ -263,13 +265,18 @@ async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
 
     confirmed_status_id = await get_status_id_by_name(db, "confirmed")
 
-    booked_services = [bs.service for bs in booking.booked_services]
+    booked_services = [bs.service for bs in booking.booked_services if bs.status.name != "rejected"]
     total_est = sum(bs.est_price for bs in booking.booked_services)
     total_final = sum(bs.price for bs in booking.booked_services if bs.price and bs.status_id == confirmed_status_id) or None
+    
+    gst_rate = Decimal('0.18') # 18% GST
     if total_final is not None:
-        gst_rate = Decimal('0.18') # 18% GST
         gst_amount = total_final * gst_rate
         total_final += gst_amount
+
+    gst_amount = total_est * gst_rate
+    total_est += gst_amount
+
     booking_progress = await get_booking_progress_history(db, booking)
 
     response = {
@@ -600,7 +607,7 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
         raise HTTPException(status_code=403, detail="Service is completed. Cancellation is not allowed.")
     
     elif current_booking_status in ["booked", "pickup"]:
-        cancellation_fee = 0    # No cancellation fee
+        cancellation_fee_with_gst = 0    # No cancellation fee
     
     elif current_booking_status == "in-progress":
         confirmed_status_id = await get_status_id_by_name(db, "confirmed")
@@ -613,7 +620,7 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
 
             total_difficulty += service_difficulty
 
-        cancellation_fee = total_amount / max(total_difficulty, 1)
+        cancellation_fee = float(total_amount) / max(total_difficulty, 1)
         if cancellation_fee < 100:
             cancellation_fee = 100
 
@@ -631,7 +638,7 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
 
         else:
             _, amount_paid = await get_online_payment_status(db, booking.id)
-            refund_amount = max(amount_paid - cancellation_fee_with_gst, 0)
+            refund_amount = max(float(amount_paid) - cancellation_fee_with_gst, 0)
             
             pending_state_id = await get_status_id_by_name(db, "pending")
             refund = Refund(
@@ -641,10 +648,11 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
                 amount = refund_amount
             )
             db.add(refund)
+            cancellation_fee_with_gst = 0
 
     else:
         cancellation_fee = 100
-        await add_cancellation_fee(db, booking, cancellation_fee)
+        cancellation_fee_with_gst = await add_cancellation_fee(db, booking, cancellation_fee)
 
     await update_booking_status(db, booking, "cancelled")
     await db.commit()
@@ -859,6 +867,7 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
     assignment = BookingAssignment(
         mechanic_id=assignment_data.mechanic_id,
         booking_id=assignment_data.booking_id,
+        note=assignment_data.note,
         assignment_type_id=assignment_data.assignment_type_id,
         status_id=assigned_status_id
     )
@@ -1177,7 +1186,7 @@ async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: C
 
         response = {
             "order_id": razorpay_order['id'],
-            "amount": total_with_gst * 100     # amount in paise
+            "amount": int(total_with_gst * 100)     # amount in paise
             }
 
         return JSONResponse(content=response)
