@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, MessageType
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.orm import selectinload
 from app.models import Booking, CustomerCar, Car, BookedService, Address
@@ -324,3 +324,17 @@ async def send_query_response(db: Session, query_email: str, query_text: str, re
         recipient_email=query_email,
         query_data={'query': query_text, 'response': response_text}
     )
+
+
+async def get_notification_logs(db: Session, notification_category: Optional[int] = None, limit: int = 100):
+    query = select(NotificationLog).options(
+        selectinload(NotificationLog.category),
+    ).order_by(desc(NotificationLog.timestamp))
+    
+    if notification_category:
+        query = query.where(NotificationLog.notification_category_id == notification_category)
+    
+    query = query.limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()

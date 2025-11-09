@@ -13,10 +13,13 @@ class Settings(BaseSettings):
     hash_algorithm: str
     access_token_expire_minutes: int
     refresh_token_expire_days: int
+
     razorpay_key_id: str
     razorpay_key_secret: str
+
     mongodb_uri: str
     mongodb_db: str
+
     mail_username: str
     mail_password: str
     mail_from: str
@@ -28,6 +31,11 @@ class Settings(BaseSettings):
     use_credentials: bool = True
     validate_certs: bool = True
     template_folder: str = "app/templates/email"
+
+    backup_dir: str = "backups"
+    max_backup_size_mb: int = 500  # Maximum size per backup
+    auto_delete_old_backups: bool = False
+    max_backup_age_days: int = 30
 
     class Config:
         env_file = str(PROJECT_ROOT / ".env")

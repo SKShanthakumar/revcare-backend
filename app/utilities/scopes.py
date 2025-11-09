@@ -134,6 +134,11 @@ scopes = {
     "WRITE:NOTIFICATION_LOG": [1],
     "DELETE:NOTIFICATION_LOG": [1],
     "UPDATE:NOTIFICATION_LOG": [1],
+
+    "READ:BACKUP": [1],
+    "WRITE:BACKUP": [1],
+    "DELETE:BACKUP": [1],
+    "UPDATE:BACKUP": [1],
 }
 
 def get_all_scopes():
