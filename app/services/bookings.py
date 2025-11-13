@@ -163,7 +163,8 @@ def get_latest_progress(booking_progress_list):
     Returns:
         BookingProgress: The most recently created progress update
     """
-    return sorted(booking_progress_list, key=lambda x: x.created_at, reverse=True)[0]
+    progress = sorted(booking_progress_list, key=lambda x: x.created_at, reverse=True)
+    return progress[0] if progress else None
 
 def get_latest_assignment(booking_assignment_list):
     """
@@ -175,7 +176,8 @@ def get_latest_assignment(booking_assignment_list):
     Returns:
         BookingAssignment: The most recently assigned booking assignment
     """
-    return sorted(booking_assignment_list, key=lambda x: x.assigned_at, reverse=True)[0]
+    assignment = sorted(booking_assignment_list, key=lambda x: x.assigned_at, reverse=True)
+    return assignment[0] if assignment else None
 
 
 async def cancelled_booking_returned(db: Session, booking_id: int):
@@ -619,7 +621,7 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
         },
         "created_at": booking.created_at
     }
-    await notification_service.send_booking_confirmation(db, booking.id)
+    # await notification_service.send_booking_confirmation(db, booking.id)
     return response
 
 
@@ -1555,7 +1557,7 @@ async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: C
         payment_obj.status_id = await get_status_id_by_name(db, "success")
         
         await db.commit()
-        await notification_service.send_invoice(db, booking.id)
+        # await notification_service.send_invoice(db, booking.id)
         
         return JSONResponse(content={"message": "Payment received successfully"})
 
@@ -1668,7 +1670,7 @@ async def validate_progress(db: Session, progress_id: int):
         mechanic.score = (mechanic.score or 0) + 2  # difficulty 2 for pickup and drop
 
     progress.validated = True
-    await notification_service.send_progress_update(db, progress.booking_id, progress)
+    # await notification_service.send_progress_update(db, progress.booking_id, progress)
     
     await db.commit()
     
@@ -1762,14 +1764,14 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
         order_id: Razorpay order ID
         payment_id: Razorpay payment ID
         signature: Razorpay payment signature for verification
-        
+        ~
     Returns:
         JSONResponse: Success message
         
     Raises:
         HTTPException: 
             - 404 if payment record or order staging is not found
-            - 400 if payment signature is invalid
+            - 400 if payment signature is invalidorder
             - 500 if payment verification fails
     """
     # fetch payment object
@@ -1827,7 +1829,7 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     await update_booking_status(db, booking, "in-progress")
        
     await db.commit()
-    await notification_service.send_invoice(db, booking.id)
+    # await notification_service.send_invoice(db, booking.id)
     
     return JSONResponse(content={"message": "Payment successful."})
 
@@ -1893,6 +1895,6 @@ async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, s
     payment_obj.paid_online = True
     
     await db.commit()
-    await notification_service.send_invoice(db, payment_obj.booking_id)
+    # await notification_service.send_invoice(db, payment_obj.booking_id)
     
     return JSONResponse(content={"message": "Payment received successfully"})

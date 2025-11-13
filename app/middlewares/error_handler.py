@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError
 import logging
 import traceback
@@ -45,7 +44,6 @@ def register_exception_handlers(app: FastAPI):
         except IntegrityError as exc:
             # Log full details for debugging
             logger.error(f"Database Integrity Error: {exc}")
-            traceback.print_exc()
 
             # Return a concise, user-friendly message
             msg = "Duplicate value or constraint violation."

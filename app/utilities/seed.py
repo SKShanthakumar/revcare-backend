@@ -16,6 +16,7 @@ from .scopes import get_all_scopes, get_admin_scopes, get_mechanic_scopes, get_c
 from app.auth import hashing
 from app.schemas import CustomerCreate, AdminCreate, MechanicCreate
 from app.services.user import create_user
+from app.services import recommendation
 from .seed_data import CHENNAI_AREAS, SERVICES_DATA, SERVICE_FUEL_TYPES_DATA, PRICE_CHART_DATA, ALL_STATUSES
 
 unique_id_trigger_script = """
@@ -291,14 +292,17 @@ async def seed_users(db: Session):
                 service_category_ids=[1,2,4,5,6,8,9]
             )
 
+            from app.services.user import create_mechanic
             await create_user(db, admin, Admin)
             await create_user(db, customer1, Customer)
             await create_user(db, customer2, Customer)
-            await create_user(db, mechanic, Mechanic)
+            await create_mechanic(db, mechanic)
 
             print("Users seeded successfully!")
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error seeding User data: {e}")
 
 async def seed_addresses(db: Session):
@@ -707,6 +711,12 @@ async def seed_services(db: Session):
             # Create Service objects from the data
             services = []
             for service_data in SERVICES_DATA:
+                text = f"""
+                Title: {service_data["title"]}
+                Description: {service_data["description"]}
+                Symptoms: {service_data["symptoms"]}
+                """
+                embedding = await recommendation.generate_embedding(text)
                 service = Service(
                     title=service_data["title"],
                     description=service_data["description"],
@@ -716,7 +726,9 @@ async def seed_services(db: Session):
                     warranty_months=service_data["warranty_months"],
                     time_hrs=service_data["time_hrs"],
                     difficulty=service_data["difficulty"],
-                    images=service_data["images"]
+                    images=service_data["images"],
+                    symptoms=service_data["symptoms"],
+                    embedding=embedding,
                 )
                 services.append(service)
             
@@ -872,7 +884,12 @@ async def seed_notification_categories(db: Session):
 
 
 async def run_seed():
-    """Run all startup DB seeding logic"""
+    """
+    Run all startup DB seeding logic
+    
+    Execute the following query in your database to enable vector embeddings extension
+    CREATE EXTENSION IF NOT EXISTS vector;
+    """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

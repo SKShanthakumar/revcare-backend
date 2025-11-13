@@ -89,7 +89,20 @@ class ServiceCreate(ServiceBase):
     category_id: int = Field(..., gt=0, description="Service category reference")
     price_chart: List[PriceChartCreateWithService] = Field(..., description="Price for each car class")
     fuel_type_ids: List[int] = Field(..., description="Compatible fuel type ids")
+    symptoms: List[str] = Field(..., description="List of symptoms for recommendation system")
     
+    @field_validator('symptoms')
+    def validate_symptoms(cls, v: List[str]) -> List[str]:
+        """Validate symptoms"""
+        if not v:
+            raise ValueError("Works list cannot be empty if provided")
+        # Strip whitespace from each work step and filter out empty strings
+        cleaned_symptoms = [work.strip() for work in v if work.strip()]
+        if len(cleaned_symptoms) < 5:
+            raise ValueError("Symptoms list must contain at least 5 symptoms for better recommendations")
+        if len(cleaned_symptoms) > 15:
+            raise ValueError("Symptoms list cannot contain more than 15 symptoms")
+        return cleaned_symptoms
 
 
 class ServiceResponse(ServiceBase):
@@ -165,6 +178,8 @@ class ServiceUpdate(BaseModel):
     time_hrs: Optional[Decimal] = Field(None, ge=0, le=999.99, description="Expected service time in hours")
     difficulty: Optional[int] = Field(None, ge=1, le=5, description="Difficulty level (1-5)")
     images: Optional[list[str]] = Field(None, max_length=5, description="List of image URLs (max 5)")
+    symptoms: Optional[List[str]] = Field(..., description="List of symptoms for recommendation system")
+
 
     @field_validator('title')
     def validate_title(cls, v: Optional[str]) -> Optional[str]:
@@ -240,6 +255,19 @@ class ServiceUpdate(BaseModel):
         
         return v if v else None
     
+    @field_validator('symptoms')
+    def validate_symptoms(cls, v: List[str]) -> List[str]:
+        """Validate symptoms"""
+        if not v:
+            return v
+        # Strip whitespace from each work step and filter out empty strings
+        cleaned_symptoms = [work.strip() for work in v if work.strip()]
+        if len(cleaned_symptoms) < 5:
+            raise ValueError("Symptoms list must contain at least 5 symptoms for better recommendations")
+        if len(cleaned_symptoms) > 15:
+            raise ValueError("Symptoms list cannot contain more than 15 symptoms")
+        return cleaned_symptoms
+
     class Config:
         extra = "ignore"
 

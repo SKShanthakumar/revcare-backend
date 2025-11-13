@@ -1,6 +1,7 @@
 from sqlalchemy import Table, Column, Integer, VARCHAR, NUMERIC, SMALLINT, TIMESTAMP, CheckConstraint, ForeignKey, ARRAY, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from pgvector.sqlalchemy import Vector
 from app.database import Base
 
 service_fuel_types = Table(
@@ -24,6 +25,11 @@ class Service(Base):
     time_hrs = Column(NUMERIC(5, 2), nullable=False)  # Up to 999.99 hours
     difficulty = Column(SMALLINT, CheckConstraint('difficulty BETWEEN 1 AND 5'), nullable=False)
     images = Column(ARRAY(VARCHAR), nullable=False)
+
+    # for recommendation system
+    symptoms = Column(ARRAY(VARCHAR), nullable=False)
+    embedding = Column(Vector(768), nullable=False)  # 768 is the dimension for BGE base model embeddings
+
     created_at = Column(TIMESTAMP, server_default=func.now())
     
     # Relationship

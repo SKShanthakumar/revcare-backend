@@ -45,6 +45,17 @@ SERVICES_DATA = [
       "Tyre pressure check and adjustment",
       "Basic safety system verification"
     ],
+    "symptoms": [
+      "car needs regular maintenance",
+      "service due light is on",
+      "haven't serviced in long time",
+      "engine sounds different than usual",
+      "want to keep car in good condition",
+      "planning long trip need checkup",
+      "car feels sluggish lately",
+      "preventive maintenance needed",
+      "routine service required"
+    ],
     "warranty_kms": 5000,
     "warranty_months": 3,
     "time_hrs": 1.5,
@@ -68,6 +79,18 @@ SERVICES_DATA = [
       "Wiper blade condition assessment",
       "Undercarriage visual inspection",
       "Test drive for performance verification"
+    ],
+    "symptoms": [
+      "want complete checkup of car",
+      "car making some unusual noises",
+      "brake pedal feels different",
+      "battery seems weak lately",
+      "car not starting smoothly",
+      "need thorough inspection",
+      "car performance decreased",
+      "multiple small issues noticed",
+      "want peace of mind before trip",
+      "comprehensive service needed"
     ],
     "warranty_kms": 7500,
     "warranty_months": 4,
@@ -93,6 +116,19 @@ SERVICES_DATA = [
       "Detailed multi-point inspection report",
       "Road test with performance analysis"
     ],
+    "symptoms": [
+      "car needs complete overhaul",
+      "want full diagnostic scan",
+      "car pulling to one side",
+      "multiple problems in car",
+      "car not driving smoothly",
+      "want everything checked thoroughly",
+      "planning to sell need full service",
+      "car feels unsafe to drive",
+      "want detailed inspection report",
+      "complete service package needed",
+      "car needs attention badly"
+    ],
     "warranty_kms": 10000,
     "warranty_months": 6,
     "time_hrs": 4.0,
@@ -114,6 +150,18 @@ SERVICES_DATA = [
       "Check for oil leaks around drain plug and filter",
       "Reset oil service indicator if applicable",
       "Dispose of old oil in environmentally safe manner"
+    ],
+    "symptoms": [
+      "engine oil is dark and dirty",
+      "engine making ticking noise",
+      "oil change light is on",
+      "engine running rough",
+      "low pickup and acceleration",
+      "engine feels hot",
+      "burning smell from engine",
+      "haven't changed oil in months",
+      "oil level is low",
+      "engine sounds louder than before"
     ],
     "warranty_kms": 5000,
     "warranty_months": 3,
@@ -137,6 +185,19 @@ SERVICES_DATA = [
       "Check and adjust idle speed",
       "Test engine compression",
       "Verify throttle response and adjust cables"
+    ],
+    "symptoms": [
+      "engine misfiring frequently",
+      "poor fuel economy",
+      "engine stuttering when accelerating",
+      "rough idle and shaking",
+      "difficulty starting engine",
+      "engine hesitates when pressing gas",
+      "loss of power on highway",
+      "engine backfiring",
+      "check engine light on",
+      "poor acceleration response",
+      "engine running on only few cylinders"
     ],
     "warranty_kms": 15000,
     "warranty_months": 6,
@@ -162,6 +223,20 @@ SERVICES_DATA = [
       "Clear codes and test drive for verification",
       "Provide detailed diagnostic report"
     ],
+    "symptoms": [
+      "check engine light came on",
+      "engine warning light flashing",
+      "engine making strange knocking sound",
+      "car won't start properly",
+      "engine cutting out while driving",
+      "loss of power suddenly",
+      "engine overheating frequently",
+      "smoke coming from engine",
+      "weird smell from engine bay",
+      "engine running very rough",
+      "multiple warning lights on dashboard",
+      "engine sounds like something broken"
+    ],
     "warranty_kms": 10000,
     "warranty_months": 6,
     "time_hrs": 3.0,
@@ -185,6 +260,18 @@ SERVICES_DATA = [
       "Install new timing belt/chain with proper tension",
       "Verify correct timing marks alignment",
       "Reassemble and test engine operation"
+    ],
+    "symptoms": [
+      "ticking noise from front of engine",
+      "car has done 60000 km",
+      "rattling sound on startup",
+      "timing belt replacement due",
+      "engine making whining noise",
+      "mechanic said belt looks worn",
+      "preventive replacement needed",
+      "engine vibration increased",
+      "squealing noise from engine",
+      "reached timing belt change interval"
     ],
     "warranty_kms": 60000,
     "warranty_months": 24,
@@ -210,6 +297,19 @@ SERVICES_DATA = [
       "Refill with proper coolant mixture",
       "Bleed air from cooling system"
     ],
+    "symptoms": [
+      "engine overheating in traffic",
+      "temperature gauge going up",
+      "coolant leaking under car",
+      "heater not working properly",
+      "steam coming from hood",
+      "coolant warning light on",
+      "engine getting too hot",
+      "radiator fan not working",
+      "coolant level keeps dropping",
+      "sweet smell from engine",
+      "white smoke from exhaust"
+    ],
     "warranty_kms": 20000,
     "warranty_months": 12,
     "time_hrs": 2.0,
@@ -233,6 +333,19 @@ SERVICES_DATA = [
       "Compress caliper pistons properly",
       "Test brake pedal feel and firmness",
       "Road test for proper braking performance"
+    ],
+    "symptoms": [
+      "brakes making squealing noise",
+      "grinding sound when braking",
+      "brake pedal goes down too far",
+      "car takes longer to stop",
+      "vibration when applying brakes",
+      "brake warning light came on",
+      "screeching noise from wheels",
+      "brakes feel weak",
+      "brake pedal feels spongy",
+      "metal sound when braking",
+      "dust on wheels constantly"
     ],
     "warranty_kms": 20000,
     "warranty_months": 12,
@@ -258,6 +371,18 @@ SERVICES_DATA = [
       "Bed-in new brake pads if installed",
       "Verify smooth braking operation"
     ],
+    "symptoms": [
+      "steering wheel shakes when braking",
+      "pulsating brake pedal",
+      "vibration at high speed braking",
+      "brake discs look damaged",
+      "uneven braking feeling",
+      "car shudders when stopping",
+      "brake pedal pulsates",
+      "grinding marks on disc",
+      "brake performance inconsistent",
+      "wobbling sensation when braking"
+    ],
     "warranty_kms": 15000,
     "warranty_months": 12,
     "time_hrs": 2.5,
@@ -281,6 +406,18 @@ SERVICES_DATA = [
       "Top up reservoir to correct level",
       "Test brake pedal firmness",
       "Check for leaks at all connections"
+    ],
+    "symptoms": [
+      "brake pedal feels soft",
+      "brake pedal goes to floor",
+      "spongy brake feel",
+      "brake fluid looks dark",
+      "brake fluid level low",
+      "brakes not responding quickly",
+      "brake pedal sinking slowly",
+      "have to pump brakes to stop",
+      "brake fluid dirty and old",
+      "brake performance reduced"
     ],
     "warranty_kms": 30000,
     "warranty_months": 24,
@@ -306,6 +443,18 @@ SERVICES_DATA = [
       "Clear fault codes and calibrate system",
       "Road test ABS activation"
     ],
+    "symptoms": [
+      "ABS light on dashboard",
+      "ABS warning light stays on",
+      "brakes locking up suddenly",
+      "pulsating pedal in emergency stop",
+      "ABS not working properly",
+      "brake light and ABS light both on",
+      "grinding noise from ABS pump",
+      "wheels locking when braking hard",
+      "ABS activating unnecessarily",
+      "traction control light also on"
+    ],
     "warranty_kms": 20000,
     "warranty_months": 12,
     "time_hrs": 2.5,
@@ -329,6 +478,19 @@ SERVICES_DATA = [
       "Replace brake hardware and springs",
       "Adjust parking brake mechanism",
       "Perform complete system testing"
+    ],
+    "symptoms": [
+      "brakes completely worn out",
+      "car not stopping properly",
+      "all brakes need replacement",
+      "brake system very old",
+      "multiple brake problems",
+      "dangerous braking condition",
+      "brake failure risk",
+      "complete brake renovation needed",
+      "brake system overhaul required",
+      "brakes totally ineffective",
+      "unsafe to drive due to brakes"
     ],
     "warranty_kms": 30000,
     "warranty_months": 18,
@@ -355,6 +517,19 @@ SERVICES_DATA = [
       "Adjust clutch pedal free play",
       "Road test clutch engagement"
     ],
+    "symptoms": [
+      "clutch slipping in high gear",
+      "burning smell when driving",
+      "difficulty changing gears",
+      "clutch pedal very hard to press",
+      "car not moving despite accelerating",
+      "RPM going up but speed not increasing",
+      "clutch engaging at top of pedal",
+      "grinding noise when changing gear",
+      "clutch vibrating when engaging",
+      "car jerking when releasing clutch",
+      "clutch pedal staying on floor"
+    ],
     "warranty_kms": 40000,
     "warranty_months": 18,
     "time_hrs": 6.0,
@@ -378,6 +553,18 @@ SERVICES_DATA = [
       "Refill with manufacturer-specified fluid",
       "Check for leaks after service",
       "Test drive for smooth shifting"
+    ],
+    "symptoms": [
+      "gear shifting rough",
+      "transmission jerking",
+      "grinding when changing gears",
+      "delayed gear engagement",
+      "transmission slipping between gears",
+      "hard to shift gears",
+      "transmission fluid dark and burnt",
+      "whining noise from gearbox",
+      "transmission hesitating",
+      "gear changes not smooth"
     ],
     "warranty_kms": 40000,
     "warranty_months": 24,
@@ -404,6 +591,20 @@ SERVICES_DATA = [
       "Test shift quality on dynamometer",
       "Reinstall and road test"
     ],
+    "symptoms": [
+      "gears popping out",
+      "cannot shift into certain gear",
+      "transmission making loud noise",
+      "gear grinding every time",
+      "stuck in one gear",
+      "gearbox leaking oil badly",
+      "cannot get into reverse",
+      "transmission completely failed",
+      "gears slipping out while driving",
+      "major gearbox problem",
+      "transmission not working at all",
+      "mechanic said gearbox needs rebuild"
+    ],
     "warranty_kms": 50000,
     "warranty_months": 24,
     "time_hrs": 12.0,
@@ -427,6 +628,18 @@ SERVICES_DATA = [
       "Torque bolts to manufacturer specifications",
       "Install new clutch components",
       "Reassemble transmission and test"
+    ],
+    "symptoms": [
+      "clutch chattering badly",
+      "vibration when starting from stop",
+      "juddering when engaging clutch",
+      "burning smell even after new clutch",
+      "clutch pedal vibrating",
+      "rough engagement of clutch",
+      "car shaking when releasing clutch",
+      "noise when clutch is pressed",
+      "flywheel damaged according to mechanic",
+      "clutch not working smooth after replacement"
     ],
     "warranty_kms": 50000,
     "warranty_months": 24,
@@ -452,6 +665,18 @@ SERVICES_DATA = [
       "Check for air in hydraulic lines",
       "Road test clutch response"
     ],
+    "symptoms": [
+      "clutch pedal soft and spongy",
+      "clutch pedal goes to floor",
+      "difficulty pressing clutch",
+      "clutch fluid leaking",
+      "clutch not disengaging properly",
+      "hard to get into gear",
+      "clutch pedal has no pressure",
+      "grinding when shifting with clutch pressed",
+      "clutch pedal stuck down",
+      "clutch engagement point changed"
+    ],
     "warranty_kms": 20000,
     "warranty_months": 12,
     "time_hrs": 1.5,
@@ -476,6 +701,19 @@ SERVICES_DATA = [
       "Check suspension geometry",
       "Road test for ride quality improvement"
     ],
+    "symptoms": [
+      "car bouncing too much on bumps",
+      "bottoming out on speed breakers",
+      "nose diving when braking",
+      "car swaying in corners",
+      "excessive body roll",
+      "rear end squatting when accelerating",
+      "bumpy uncomfortable ride",
+      "car keeps bouncing after bump",
+      "suspension feels too soft",
+      "knocking sound from suspension",
+      "oil leaking from shocks"
+    ],
     "warranty_kms": 30000,
     "warranty_months": 18,
     "time_hrs": 2.0,
@@ -499,6 +737,20 @@ SERVICES_DATA = [
       "Recheck all alignment specifications",
       "Print alignment report with before/after",
       "Test drive for straight tracking"
+    ],
+    "symptoms": [
+      "car pulling to left",
+      "car pulling to right",
+      "steering wheel not centered",
+      "steering wheel crooked when driving straight",
+      "uneven tire wear",
+      "car drifting on straight road",
+      "steering feels loose",
+      "vibration at high speed",
+      "tires wearing on one side",
+      "car veering to side",
+      "have to hold steering to keep straight",
+      "front tires wearing fast"
     ],
     "warranty_kms": 10000,
     "warranty_months": 6,
@@ -525,6 +777,19 @@ SERVICES_DATA = [
       "Refill power steering fluid",
       "Perform wheel alignment check"
     ],
+    "symptoms": [
+      "steering very loose and vague",
+      "clunking when turning steering",
+      "power steering fluid leaking",
+      "steering wheel play excessive",
+      "grinding noise when turning",
+      "steering hard to turn",
+      "knocking sound from front when steering",
+      "steering wandering on highway",
+      "steering feels disconnected",
+      "loud noise when turning full lock",
+      "steering rack making noise"
+    ],
     "warranty_kms": 40000,
     "warranty_months": 18,
     "time_hrs": 4.0,
@@ -549,6 +814,18 @@ SERVICES_DATA = [
       "Torque bolts with suspension loaded",
       "Check alignment after installation"
     ],
+    "symptoms": [
+      "clunking noise from suspension",
+      "knocking sound over bumps",
+      "rattling from underneath car",
+      "suspension making noise when turning",
+      "squeaking from suspension",
+      "car handling feels loose",
+      "vibration through steering wheel",
+      "banging noise from front",
+      "car feels unstable in corners",
+      "creaking noise when going over bumps"
+    ],
     "warranty_kms": 30000,
     "warranty_months": 18,
     "time_hrs": 3.0,
@@ -571,6 +848,17 @@ SERVICES_DATA = [
       "Check power steering pump operation",
       "Test steering effort at idle and driving",
       "Verify no whining or groaning noises"
+    ],
+    "symptoms": [
+      "steering hard to turn",
+      "whining noise when turning",
+      "groaning sound from steering",
+      "steering heavy at low speed",
+      "power steering not working",
+      "squealing when turning wheel",
+      "steering stiff in morning",
+      "power steering fluid low",
+      "hard steering especially when parking"
     ],
     "warranty_kms": 10000,
     "warranty_months": 6,
@@ -596,6 +884,20 @@ SERVICES_DATA = [
       "Apply terminal protection spray",
       "Reset vehicle systems if required"
     ],
+    "symptoms": [
+      "car not starting",
+      "engine cranking slowly",
+      "battery light on dashboard",
+      "dim headlights",
+      "clicking sound when starting",
+      "have to jump start every time",
+      "battery keeps dying",
+      "electrical issues in car",
+      "weak cranking sound",
+      "battery is old and weak",
+      "car won't start in morning",
+      "dashboard lights flickering"
+    ],
     "warranty_kms": 15000,
     "warranty_months": 12,
     "time_hrs": 0.5,
@@ -620,6 +922,20 @@ SERVICES_DATA = [
       "Reinstall and test charging/starting",
       "Verify proper belt tension"
     ],
+    "symptoms": [
+      "battery light stays on",
+      "battery draining while driving",
+      "starter motor not working",
+      "grinding noise when starting",
+      "alternator making noise",
+      "electrical system not charging",
+      "lights dimming while driving",
+      "smell from alternator area",
+      "starter just clicks",
+      "engine won't crank",
+      "new battery dies quickly",
+      "whining noise from engine bay"
+    ],
     "warranty_kms": 25000,
     "warranty_months": 12,
     "time_hrs": 3.0,
@@ -642,6 +958,18 @@ SERVICES_DATA = [
       "Test light operation and alignment",
       "Adjust headlight aim if necessary",
       "Verify all indicators flash properly"
+    ],
+    "symptoms": [
+      "headlight not working",
+      "dim headlights",
+      "one headlight out",
+      "indicator not blinking",
+      "turn signal not working",
+      "bulb blown",
+      "headlight very weak",
+      "indicator blinking fast",
+      "both headlights dim",
+      "got stopped by police for light"
     ],
     "warranty_kms": 5000,
     "warranty_months": 6,
@@ -667,6 +995,20 @@ SERVICES_DATA = [
       "Clear codes and monitor for recurrence",
       "Provide detailed diagnostic report"
     ],
+    "symptoms": [
+      "check engine light on",
+      "multiple warning lights on",
+      "car going into limp mode",
+      "engine management light flashing",
+      "car not performing properly",
+      "electronic problems in car",
+      "computer showing errors",
+      "sensor malfunction suspected",
+      "need diagnostic scan",
+      "car behaving strangely",
+      "warning lights appearing randomly",
+      "electronic fault detected"
+    ],
     "warranty_kms": 10000,
     "warranty_months": 6,
     "time_hrs": 2.0,
@@ -691,6 +1033,19 @@ SERVICES_DATA = [
       "Replace fuses with correct amperage",
       "Test circuit operation thoroughly"
     ],
+    "symptoms": [
+      "fuse keeps blowing",
+      "electrical short circuit",
+      "some lights not working",
+      "accessory stopped working",
+      "burning smell from wiring",
+      "intermittent electrical problem",
+      "power windows not working",
+      "central locking failed",
+      "radio not turning on",
+      "electrical fault suspected",
+      "wiring issue somewhere"
+    ],
     "warranty_kms": 15000,
     "warranty_months": 12,
     "time_hrs": 2.0,
@@ -713,6 +1068,18 @@ SERVICES_DATA = [
       "Recharge with correct refrigerant type and amount",
       "Test system pressures and temperatures",
       "Verify cold air output at vents"
+    ],
+    "symptoms": [
+      "AC not cooling",
+      "AC blowing warm air",
+      "AC not cold enough",
+      "AC takes long time to cool",
+      "AC cooling reduced",
+      "AC gas finished",
+      "need AC gas refill",
+      "AC compressor running but no cooling",
+      "AC only cool at high speed",
+      "AC stopped working suddenly"
     ],
     "warranty_kms": 10000,
     "warranty_months": 6,
@@ -739,6 +1106,19 @@ SERVICES_DATA = [
       "Test AC operation and temperature",
       "Check for leaks at all connections"
     ],
+    "symptoms": [
+      "AC compressor not working",
+      "loud noise from AC compressor",
+      "AC clutch not engaging",
+      "squealing when AC turned on",
+      "AC compressor seized",
+      "grinding noise when AC on",
+      "AC compressor leaking oil",
+      "AC belt keeps breaking",
+      "rattling noise from AC",
+      "AC compressor smoking",
+      "burning smell when AC on"
+    ],
     "warranty_kms": 20000,
     "warranty_months": 12,
     "time_hrs": 3.0,
@@ -761,6 +1141,18 @@ SERVICES_DATA = [
       "Ensure proper filter orientation",
       "Test airflow improvement",
       "Check for air leaks around filter"
+    ],
+    "symptoms": [
+      "bad smell from AC",
+      "musty odor from vents",
+      "weak airflow from AC",
+      "AC vents blowing less air",
+      "dust coming from AC",
+      "allergies when AC on",
+      "foul smell in car",
+      "reduced air from vents",
+      "AC filter never changed",
+      "dirty smell from AC"
     ],
     "warranty_kms": 15000,
     "warranty_months": 12,
@@ -786,6 +1178,19 @@ SERVICES_DATA = [
       "Test all fan speeds and temperature control",
       "Verify proper air distribution"
     ],
+    "symptoms": [
+      "blower not working",
+      "no air from vents",
+      "heater not blowing hot",
+      "fan only works on high speed",
+      "blower making noise",
+      "sweet smell in cabin",
+      "windshield fogging up",
+      "heater blowing cold air",
+      "blower motor squealing",
+      "no hot air in winter",
+      "fan speed not changing"
+    ],
     "warranty_kms": 15000,
     "warranty_months": 12,
     "time_hrs": 2.5,
@@ -809,6 +1214,18 @@ SERVICES_DATA = [
       "Evacuate system completely",
       "Recharge with proper refrigerant amount",
       "Verify system holds pressure"
+    ],
+    "symptoms": [
+      "AC gas leaking",
+      "AC gas finishing quickly",
+      "need AC refill every month",
+      "AC cooling decreases gradually",
+      "oily residue near AC components",
+      "hissing sound from AC",
+      "AC stops cooling after few days",
+      "AC gas not lasting",
+      "refrigerant leak suspected",
+      "AC needs constant recharge"
     ],
     "warranty_kms": 15000,
     "warranty_months": 12,
@@ -834,6 +1251,20 @@ SERVICES_DATA = [
       "Print detailed alignment report",
       "Test drive for straight tracking"
     ],
+    "symptoms": [
+      "car pulling to one side",
+      "steering wheel off center",
+      "tires wearing unevenly",
+      "car drifts when hands off wheel",
+      "steering not straight",
+      "uneven tire tread",
+      "car veers to left or right",
+      "front end alignment needed",
+      "tires wearing on edges",
+      "steering feels loose",
+      "have to constantly correct steering",
+      "hit big pothole need alignment"
+    ],
     "warranty_kms": 10000,
     "warranty_months": 6,
     "time_hrs": 1.0,
@@ -858,6 +1289,18 @@ SERVICES_DATA = [
       "Reinstall wheels with correct torque",
       "Test drive for vibration elimination"
     ],
+    "symptoms": [
+      "steering wheel vibrating",
+      "vibration at high speed",
+      "shaking when driving fast",
+      "car vibrates at 80 kmph",
+      "steering shakes above 60",
+      "wheels out of balance",
+      "vibration through floor",
+      "just installed new tires",
+      "vibration after tire rotation",
+      "steering wobbles at speed"
+    ],
     "warranty_kms": 10000,
     "warranty_months": 6,
     "time_hrs": 0.75,
@@ -881,6 +1324,17 @@ SERVICES_DATA = [
       "Reinstall wheels with proper torque sequence",
       "Check tire pressures and adjust",
       "Reset TPMS if equipped"
+    ],
+    "symptoms": [
+      "front tires wearing faster",
+      "uneven tire wear pattern",
+      "tires need rotation",
+      "want to extend tire life",
+      "preventive tire maintenance",
+      "rear tires still good front worn",
+      "tire rotation due",
+      "maximize tire lifespan",
+      "even out tire wear"
     ],
     "warranty_kms": 10000,
     "warranty_months": 6,
@@ -907,6 +1361,19 @@ SERVICES_DATA = [
       "Install on vehicle and torque properly",
       "Reset TPMS sensors if equipped"
     ],
+    "symptoms": [
+      "tire worn out completely",
+      "tire tread gone",
+      "tire damaged beyond repair",
+      "tire has bulge on side",
+      "tire sidewall damaged",
+      "tire punctured badly",
+      "tires bald and smooth",
+      "tire age too old",
+      "tire cracked and dry",
+      "failed in tire inspection",
+      "need new tires urgently"
+    ],
     "warranty_kms": 1000,
     "warranty_months": 1,
     "time_hrs": 1.0,
@@ -931,6 +1398,19 @@ SERVICES_DATA = [
       "Reinflate tire to proper pressure",
       "Balance wheel and reinstall"
     ],
+    "symptoms": [
+      "tire punctured",
+      "tire losing air",
+      "flat tire",
+      "tire goes flat overnight",
+      "nail in tire",
+      "slow puncture",
+      "tire pressure keeps dropping",
+      "tire deflating slowly",
+      "hole in tire",
+      "tire needs air daily",
+      "ran over sharp object"
+    ],
     "warranty_kms": 5000,
     "warranty_months": 3,
     "time_hrs": 0.5,
@@ -954,6 +1434,19 @@ SERVICES_DATA = [
       "Blend repair area with surrounding panel",
       "Polish repaired area to match finish"
     ],
+    "symptoms": [
+      "dent on door",
+      "dent on bonnet",
+      "car door dented",
+      "body panel pushed in",
+      "dent from parking accident",
+      "shopping cart hit car",
+      "hail damage on car",
+      "someone hit my parked car",
+      "dent on fender",
+      "minor collision dent",
+      "body work needed"
+    ],
     "warranty_kms": 0,
     "warranty_months": 6,
     "time_hrs": 2.0,
@@ -976,6 +1469,19 @@ SERVICES_DATA = [
       "Apply clear coat for protection and gloss",
       "Wet sand and polish for seamless blend",
       "Inspect under different lighting conditions"
+    ],
+    "symptoms": [
+      "scratch on car door",
+      "paint scratched off",
+      "deep scratch on bumper",
+      "someone keyed my car",
+      "scratches from tree branch",
+      "paint damage on side",
+      "scrape mark on car",
+      "minor scratch needs fixing",
+      "paint chipped and scratched",
+      "scratch down to metal",
+      "surface scratches on paint"
     ],
     "warranty_kms": 0,
     "warranty_months": 6,
@@ -1002,6 +1508,20 @@ SERVICES_DATA = [
       "Color sand and polish for mirror finish",
       "Reassemble all removed components"
     ],
+    "symptoms": [
+      "want to change car color",
+      "paint faded badly",
+      "paint oxidized and dull",
+      "entire car needs repainting",
+      "old paint peeling off",
+      "rust patches on body",
+      "want fresh new look",
+      "complete repaint needed",
+      "paint looks very old",
+      "car body in bad condition",
+      "want showroom finish",
+      "restore car to new condition"
+    ],
     "warranty_kms": 0,
     "warranty_months": 12,
     "time_hrs": 40.0,
@@ -1025,6 +1545,18 @@ SERVICES_DATA = [
       "Apply plastic primer and base coat",
       "Apply color-matched paint and clear coat",
       "Reinstall bumper with proper alignment"
+    ],
+    "symptoms": [
+      "bumper cracked",
+      "bumper scratched badly",
+      "bumper dent from parking",
+      "bumper paint chipped",
+      "rear bumper damaged",
+      "front bumper broken",
+      "bumper hanging loose",
+      "bumper scraped on speed breaker",
+      "bumper needs painting",
+      "bumper collision damage"
     ],
     "warranty_kms": 0,
     "warranty_months": 6,
@@ -1050,6 +1582,18 @@ SERVICES_DATA = [
       "Apply protective clear coat",
       "Cure coating properly before installation"
     ],
+    "symptoms": [
+      "alloy wheels scratched",
+      "wheel paint peeling",
+      "curb damage on wheels",
+      "wheels look old and worn",
+      "alloy wheels corroded",
+      "want black painted wheels",
+      "wheel finish damaged",
+      "wheels need refurbishing",
+      "alloy wheels faded",
+      "rims look terrible"
+    ],
     "warranty_kms": 0,
     "warranty_months": 6,
     "time_hrs": 4.0,
@@ -1072,6 +1616,16 @@ SERVICES_DATA = [
       "Rinse completely with clean water",
       "Dry with microfiber towels or air blower",
       "Clean windows and mirrors"
+    ],
+    "symptoms": [
+      "car very dirty",
+      "car needs washing",
+      "dust and dirt all over",
+      "bird droppings on car",
+      "mud on car body",
+      "want clean car",
+      "car exterior dirty",
+      "need basic car wash"
     ],
     "warranty_kms": 0,
     "warranty_months": 0,
@@ -1097,6 +1651,18 @@ SERVICES_DATA = [
       "Clean windows from inside",
       "Replace air freshener"
     ],
+    "symptoms": [
+      "car interior very dirty",
+      "dust on dashboard",
+      "crumbs in seats",
+      "dirty floor mats",
+      "stains on seats",
+      "bad smell inside car",
+      "messy interior",
+      "need deep cleaning inside",
+      "interior looks neglected",
+      "want fresh clean cabin"
+    ],
     "warranty_kms": 0,
     "warranty_months": 0,
     "time_hrs": 1.0,
@@ -1119,6 +1685,16 @@ SERVICES_DATA = [
       "Blow dry with compressed air",
       "Apply plastic and rubber dressing",
       "Remove protective covers and inspect"
+    ],
+    "symptoms": [
+      "engine bay very dirty",
+      "oil and grease in engine",
+      "dust accumulated on engine",
+      "engine looks grimy",
+      "want clean engine compartment",
+      "engine bay needs cleaning",
+      "greasy engine components",
+      "engine area neglected"
     ],
     "warranty_kms": 0,
     "warranty_months": 0,
@@ -1143,6 +1719,19 @@ SERVICES_DATA = [
       "Remove polish residue completely",
       "Apply paint sealant or wax protection",
       "Dress tires and exterior trim"
+    ],
+    "symptoms": [
+      "paint looks dull",
+      "swirl marks on paint",
+      "paint not shiny",
+      "paint oxidized",
+      "want glossy finish",
+      "minor scratches all over",
+      "paint needs buffing",
+      "car lost its shine",
+      "paint looks faded",
+      "want mirror finish",
+      "restore paint gloss"
     ],
     "warranty_kms": 0,
     "warranty_months": 3,
@@ -1170,6 +1759,19 @@ SERVICES_DATA = [
       "Apply tire shine and trim dressing",
       "Final inspection and quality check"
     ],
+    "symptoms": [
+      "want complete car makeover",
+      "car needs full detailing",
+      "want showroom condition",
+      "car looking old and tired",
+      "prepare car for sale",
+      "want professional detailing",
+      "complete car restoration",
+      "car needs everything done",
+      "want car like new",
+      "comprehensive cleaning needed",
+      "premium detailing required"
+    ],
     "warranty_kms": 0,
     "warranty_months": 6,
     "time_hrs": 8.0,
@@ -1193,6 +1795,17 @@ SERVICES_DATA = [
       "Reinstall headrests through cover openings",
       "Adjust for wrinkle-free appearance",
       "Verify airbag compatibility if applicable"
+    ],
+    "symptoms": [
+      "want seat covers installed",
+      "protect original seats",
+      "seats getting worn",
+      "bought new seat covers",
+      "want custom seat covers",
+      "seats look old",
+      "need seat protection",
+      "upgrade interior look",
+      "cover damaged seats"
     ],
     "warranty_kms": 0,
     "warranty_months": 3,
@@ -1219,6 +1832,19 @@ SERVICES_DATA = [
       "Test all audio components and balance",
       "Secure all wiring properly"
     ],
+    "symptoms": [
+      "want better sound system",
+      "factory speakers not good",
+      "need music system upgrade",
+      "want subwoofer installed",
+      "audio quality poor",
+      "speakers not working",
+      "want amplifier added",
+      "need new stereo installed",
+      "upgrade car audio",
+      "want premium sound",
+      "install aftermarket speakers"
+    ],
     "warranty_kms": 0,
     "warranty_months": 12,
     "time_hrs": 4.0,
@@ -1244,6 +1870,18 @@ SERVICES_DATA = [
       "Test camera operation in reverse gear",
       "Secure all wiring and trim panels"
     ],
+    "symptoms": [
+      "want reverse camera",
+      "difficult to reverse park",
+      "need parking assistance",
+      "blind spot when reversing",
+      "want rear view camera",
+      "safety feature needed",
+      "scared to reverse",
+      "parking sensors not enough",
+      "need visual aid for parking",
+      "upgrade safety features"
+    ],
     "warranty_kms": 0,
     "warranty_months": 12,
     "time_hrs": 2.5,
@@ -1267,6 +1905,18 @@ SERVICES_DATA = [
       "Test GPS signal and location accuracy",
       "Secure device from detection or tampering",
       "Provide user access credentials"
+    ],
+    "symptoms": [
+      "want GPS tracker installed",
+      "need vehicle tracking",
+      "security concern for car",
+      "want to monitor car location",
+      "theft prevention needed",
+      "fleet management requirement",
+      "need anti-theft device",
+      "want real-time tracking",
+      "safety and security upgrade",
+      "track car remotely"
     ],
     "warranty_kms": 0,
     "warranty_months": 12,
@@ -1293,6 +1943,18 @@ SERVICES_DATA = [
       "Test all sensors and alarm triggers",
       "Provide user manual and remote controls"
     ],
+    "symptoms": [
+      "want car alarm installed",
+      "no security system in car",
+      "theft concern in area",
+      "need anti-theft alarm",
+      "car security upgrade",
+      "want immobilizer system",
+      "protect car from theft",
+      "need alarm with remote",
+      "security enhancement needed",
+      "high crime area need alarm"
+    ],
     "warranty_kms": 0,
     "warranty_months": 12,
     "time_hrs": 3.5,
@@ -1318,6 +1980,19 @@ SERVICES_DATA = [
       "Provide detailed battery health report",
       "Recommend service or replacement if needed"
     ],
+    "symptoms": [
+      "EV range reduced",
+      "hybrid battery not charging fully",
+      "battery capacity decreased",
+      "electric range dropped",
+      "battery warning light on",
+      "hybrid battery weak",
+      "EV battery degradation",
+      "charging taking longer",
+      "battery health check needed",
+      "reduced fuel economy in hybrid",
+      "battery performance issues"
+    ],
     "warranty_kms": 15000,
     "warranty_months": 12,
     "time_hrs": 1.5,
@@ -1341,6 +2016,17 @@ SERVICES_DATA = [
       "Check cooling fans and air flow",
       "Test temperature sensors and controls",
       "Verify proper cooling system operation"
+    ],
+    "symptoms": [
+      "battery overheating",
+      "battery temperature high",
+      "EV battery getting hot",
+      "charging speed reduced due to heat",
+      "battery cooling fan noise",
+      "battery thermal warning",
+      "battery coolant low",
+      "battery temperature gauge high",
+      "reduced performance in hot weather"
     ],
     "warranty_kms": 30000,
     "warranty_months": 24,
@@ -1367,6 +2053,18 @@ SERVICES_DATA = [
       "Provide diagnostic report with findings",
       "Recommend repairs if issues found"
     ],
+    "symptoms": [
+      "EV power loss",
+      "hybrid system warning light",
+      "inverter fault code",
+      "power electronics error",
+      "electric motor not responding",
+      "regenerative braking not working",
+      "EV drivetrain issue",
+      "hybrid system malfunction",
+      "ready light not coming on",
+      "electric drive problem"
+    ],
     "warranty_kms": 15000,
     "warranty_months": 12,
     "time_hrs": 2.5,
@@ -1392,6 +2090,18 @@ SERVICES_DATA = [
       "Verify proper motor control operation",
       "Clean motor cooling passages if accessible"
     ],
+    "symptoms": [
+      "electric motor making noise",
+      "whining from motor",
+      "vibration from drivetrain",
+      "motor performance reduced",
+      "acceleration not smooth",
+      "grinding from motor",
+      "motor overheating",
+      "unusual motor sound",
+      "electric drive vibration",
+      "motor efficiency decreased"
+    ],
     "warranty_kms": 30000,
     "warranty_months": 18,
     "time_hrs": 2.0,
@@ -1416,6 +2126,19 @@ SERVICES_DATA = [
       "Test charging communication systems",
       "Verify proper charge indicator operation",
       "Check for software updates to charging system"
+    ],
+    "symptoms": [
+      "car not charging",
+      "charging very slow",
+      "charging port loose",
+      "charging cable not connecting",
+      "charge port damaged",
+      "charging error message",
+      "intermittent charging",
+      "charging stops randomly",
+      "charge port light not working",
+      "charging station won't connect",
+      "onboard charger issue"
     ],
     "warranty_kms": 15000,
     "warranty_months": 12,

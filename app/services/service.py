@@ -1,14 +1,15 @@
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func, cast
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
+from pgvector.sqlalchemy import Vector
 from typing import List
 from app.models import Service, PriceChart, FuelType, ServiceReview
 from app.schemas import ServiceUpdate, ServiceUpdateWithForeignData, ServiceReviewCreate, ServiceReviewUpdate
 from app.utilities.data_utils import filter_data_for_model
-from app.services import crud
+from app.services import crud, recommendation
 
 # utils
 async def update_service_price_chart(db: Session, service_id: int, new_price_chart_data: list):
@@ -101,7 +102,16 @@ async def create_service(db: Session, data: dict):
     Raises:
         HTTPException: 400 if there's an integrity error (invalid foreign key reference)
     """
-    # check customer trying to access other customer's address - if condition also bypasses admin
+    # create text vector for recommendation system
+    text = f"""
+    Title: {data.title}
+    Description: {data.description}
+    Symptoms: {data.symptoms}
+    """
+    embedding = await recommendation.generate_embedding(text)
+    print(embedding)
+    data["embedding"] = embedding
+
     filtered_data = filter_data_for_model(Service, data)
     service = Service(**filtered_data)
     db.add(service)
@@ -178,6 +188,17 @@ async def update_service(db: Session, service_id: int, update_schema: ServiceUpd
     
     if new_data:
         flag = True
+        if "symptoms" in new_data:
+            # update embedding if symptoms changed
+            text = f"""
+            Title: {new_data.get('title', service.title)}
+            Description: {new_data.get('description', service.description)}
+            Symptoms: {new_data['symptoms']}
+            """
+            embedding = await recommendation.generate_embedding(text)
+            print(embedding)
+            new_data["embedding"] = embedding
+            
         await crud.update_record_by_primary_key(db, service_id, new_data, Service)
 
     if update_schema.price_chart is not None:
@@ -280,3 +301,27 @@ async def delete_review_by_id(service_id: int, db: Session, payload: dict):
     }
     message = await crud.delete_record_by_composite_key(db, pk, ServiceReview)
     return JSONResponse(content=message)
+
+
+async def recommend_service(query: str, db: Session):
+    query_embedding = await recommendation.generate_embedding(query)
+
+    VECTOR_DIM = 768
+    stmt = (
+        select(
+            Service.id,
+            Service.title,
+            (1 - func.cosine_distance(Service.embedding, cast(query_embedding, Vector(VECTOR_DIM)))).label("score")
+        )
+        .order_by(func.cosine_distance(Service.embedding, cast(query_embedding, Vector(VECTOR_DIM))))
+        .limit(3)
+    )
+
+    rows = await db.execute(stmt)
+    results = rows.all()
+
+    result = [
+        {"id": r.id, "title": r.title, "score": float(r.score)}
+        for r in results
+    ]
+    return result

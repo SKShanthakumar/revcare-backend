@@ -136,16 +136,30 @@ async def delete_review_by_id(service_id: int, db: Session = Depends(get_postgre
     return await car_service.delete_review_by_id(service_id, db, payload)
 
 
+@router.get("/recommend", response_class=JSONResponse)
+async def service_recommendation(query: str, db: Session = Depends(get_postgres_db)):
+    """
+    Recommend services based on user query.
+    
+    Args:
+        id: Service ID
+        db: Database session
+        
+    Returns:
+        List[ServiceResponse]: List of services
+    """
+    return await car_service.recommend_service(query, db)
+
+
 # service routes
 @router.get("/", response_model=List[ServiceResponse])
-async def get_services_by_category_id(category_id: Optional[int] = None, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:SERVICES", "READ:PRICE_CHART"])):
+async def get_services_by_category_id(category_id: Optional[int] = None, db: Session = Depends(get_postgres_db)):
     """
     Get all services, optionally filtered by category.
     
     Args:
         category_id: Optional category ID to filter by
         db: Database session
-        payload: Validated token payload
         
     Returns:
         List[ServiceResponse]: List of services
@@ -154,14 +168,13 @@ async def get_services_by_category_id(category_id: Optional[int] = None, db: Ses
     return await crud.get_all_records(db, Service, filters=filters)
 
 @router.get("/{service_id}", response_model=ServiceResponse)
-async def get_services_by_service_id(service_id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:SERVICES", "READ:PRICE_CHART"])):
+async def get_services_by_service_id(service_id: int, db: Session = Depends(get_postgres_db)):
     """
     Get a service by ID.
     
     Args:
         service_id: Service ID
         db: Database session
-        payload: Validated token payload
         
     Returns:
         ServiceResponse: Service information
