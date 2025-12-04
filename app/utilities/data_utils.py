@@ -111,3 +111,31 @@ async def get_gst_percent() -> str | None:
     db = get_mongo_db()
     gst_record = await db.gst.find_one({}, {"_id": 0, "percent": 1})
     return gst_record.get("percent") if gst_record else None
+
+async def get_validation_automation_status() -> str | None:
+    """
+    Fetch only the GST percent value from the single GST record.
+
+    Retrieves the GST percentage from MongoDB. The GST record is a singleton
+    record in the database.
+
+    Returns:
+        str | None: GST percent string (e.g., "18%"), or None if not found
+    """
+    db = get_mongo_db()
+    record = await db.app_settings.find_one({"setting_id": "validation_automation"}, {"_id": 0, "state": 1})
+    return record.get("state") if record else None
+
+async def get_analysis_validation_automation_status() -> str | None:
+    """
+    Fetch only the GST percent value from the single GST record.
+
+    Retrieves the GST percentage from MongoDB. The GST record is a singleton
+    record in the database.
+
+    Returns:
+        str | None: GST percent string (e.g., "18%"), or None if not found
+    """
+    db = get_mongo_db()
+    record = await db.app_settings.find_one({"setting_id": "analysis_validation_automation"}, {"_id": 0, "state": 1})
+    return record.get("state") if record else None

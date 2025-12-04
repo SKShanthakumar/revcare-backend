@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import admin, customer, mechanic, auth, car, address, service, utility, bookings, payment, payment_demo, content, gst, query, notification, backup
+from . import admin, customer, helper, mechanic, auth, car, address, service, utility, bookings, payment, payment_demo, content, gst, query, notification, backup, app_settings
 
 router = APIRouter()
 router.include_router(customer.router, prefix="/customers", tags=["Customers"])
@@ -18,3 +18,5 @@ router.include_router(gst.router, prefix="/gst", tags=["GST"])
 router.include_router(query.router, prefix="/queries", tags=["Queries"])
 router.include_router(notification.router, prefix="/notification", tags=["Notification"])
 router.include_router(backup.router, prefix="/backup", tags=["Backup & Recovery"])
+router.include_router(helper.router, prefix="/helper", tags=["Helper Functions"])
+router.include_router(app_settings.router, prefix="/settings", tags=["App Settings"])

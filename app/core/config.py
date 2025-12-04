@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     auto_delete_old_backups: bool = False
     max_backup_age_days: int = 30
 
+    groq_api_key: str
+
+    working_hrs: int = 9
+
     class Config:
         """Pydantic configuration for Settings class."""
         env_file = str(PROJECT_ROOT / ".env")

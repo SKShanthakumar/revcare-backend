@@ -20,8 +20,10 @@ from app.schemas import (
     BookingAnalysisCreate, CustomerServiceSelection, BookingProgressUpdate,
     BookingAnalysisUpdate, CashOnDelivery
 )
-from app.services import crud, payment as payment_service, notification as notification_service
-from app.utilities.data_utils import get_gst_percent
+from app.services import crud, payment as payment_service, notification as notification_service, llm as llm_service
+from app.utilities.data_utils import get_gst_percent, get_validation_automation_status, get_analysis_validation_automation_status
+from app.core.config import settings
+from app.core.assigment import select_mechanic_for_service, select_mechanic_for_pickup_drop_analysis
 
 
 # Helper Functions
@@ -44,6 +46,27 @@ async def get_status_id_by_name(db: Session, status_name: str) -> int:
     if not status:
         raise HTTPException(status_code=404, detail=f"Status '{status_name}' not found")
     return status.id
+
+
+async def get_assignment_id_by_name(db: Session, assignment_name: str) -> int:
+    """
+    Get assignment ID by assignment name.
+    
+    Args:
+        db: Async database session
+        assignment_name: Name of the assignment to look up
+        
+    Returns:
+        int: Status ID
+        
+    Raises:
+        HTTPException: 404 if assignment name is not found
+    """
+    result = await db.execute(select(AssignmentType).where(AssignmentType.name == assignment_name))
+    assignment = result.scalar_one_or_none()
+    if not assignment:
+        raise HTTPException(status_code=404, detail=f"Status '{assignment_name}' not found")
+    return assignment.id
 
 
 async def get_or_create_address(db: Session, customer_id: str, address_id: Optional[int], address_data: Optional[Dict]) -> int:
@@ -165,6 +188,7 @@ def get_latest_progress(booking_progress_list):
     """
     progress = sorted(booking_progress_list, key=lambda x: x.created_at, reverse=True)
     return progress[0] if progress else None
+
 
 def get_latest_assignment(booking_assignment_list):
     """
@@ -386,6 +410,46 @@ async def get_online_payment_status(db: Session, booking_id: int):
     return False, -1
 
 
+async def automated_mechanic_assignment(db: Session, booking_id: int, assignment_type: str):
+    if assignment_type == "service":
+        mechanic_to_assign = await select_mechanic_for_service(db, booking_id)
+    elif assignment_type in ["pickup", "drop"]:
+        mechanic_to_assign = await select_mechanic_for_pickup_drop_analysis(db, booking_id, analysis=False)
+    else:
+        mechanic_to_assign = await select_mechanic_for_pickup_drop_analysis(db, booking_id, analysis=True)
+
+    if not mechanic_to_assign:
+        raise HTTPException(status_code=404, detail="No suitable mechanic found for assignment.")
+
+    assigment_type_id = await get_assignment_id_by_name(db, assignment_type)
+    assignment_data = MechanicAssignmentCreate(
+        mechanic_id = mechanic_to_assign.id,
+        booking_id = booking_id,
+        assignment_type_id = assigment_type_id,
+        note = f'automated assignment for {assignment_type}'
+    )
+    await assign_mechanic(db, assignment_data)
+
+
+async def automated_progress_validation(db: Session, id: int, description: str, recommendation: str = '', is_analysis: bool = False):
+    description = await llm_service.rewrite_message(description)
+    
+    if is_analysis:
+        recommendation = await llm_service.rewrite_message(recommendation)
+        update_data = BookingAnalysisUpdate(
+            description = description,
+            recommendation = recommendation
+        )
+        await update_analysis(db, id, update_data)
+        await validate_analysis(db, id)
+    else:
+        update_data = BookingProgressUpdate(
+            description = description
+        )
+        await update_progress(db, id, update_data)
+        await validate_progress(db, id)
+
+
 
 # common functions
 async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
@@ -490,6 +554,7 @@ async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
     return response
 
 
+
 # Customer Functions
 async def create_booking(db: Session, booking_data: BookingCreate, payload: dict):
     """
@@ -531,7 +596,7 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
             raise HTTPException(status_code=404, detail="Service not found.")
         hours_required += service.time_hrs
     
-    working_hours = 9
+    working_hours = settings.working_hrs
     days_required = math.ceil(hours_required / working_hours)
     customer_booked_days = (booking_data.drop_date - booking_data.pickup_date).days
 
@@ -587,6 +652,9 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
             completed=False
         ))
     db.add_all(booked_services)
+
+    # automated mechanic assignment
+    await automated_mechanic_assignment(db, booking.id, "pickup")
     
     await db.commit()
     await db.refresh(booking)
@@ -621,7 +689,8 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
         },
         "created_at": booking.created_at
     }
-    # await notification_service.send_booking_confirmation(db, booking.id)
+    await notification_service.send_booking_confirmation(db, booking.id)
+
     return response
 
 
@@ -811,6 +880,9 @@ async def customer_confirm_services(db: Session, booking_id: int, selection: Cus
         # Update booking status to 'in-progress'
         booking.payment_method_id = selection.payment_method_id
         await update_booking_status(db, booking, "in-progress")
+
+        # automated mechanic assignment
+        await automated_mechanic_assignment(db, booking.id, "service")
         
         await db.commit()
         
@@ -901,12 +973,17 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
         cancellation_fee_with_gst = await add_cancellation_fee(db, booking, cancellation_fee)
 
     await update_booking_status(db, booking, "cancelled")
+
+    # automated mechanic assignment
+    await automated_mechanic_assignment(db, booking.id, "drop")
+
     await db.commit()
     
     return JSONResponse(content={
         "message": "Booking cancelled successfully. Online payments will be refunded in 14 days.",
         "cancellation_fee": cancellation_fee
         })
+
 
 
 # Admin Functions
@@ -1094,7 +1171,17 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
             - 404 if mechanic is not qualified for the assignment type
             - 400 if invalid status transition
     """
-    booking = await db.get(Booking, assignment_data.booking_id)
+    stmt = (
+        select(Booking)
+        .where(Booking.id == assignment_data.booking_id)
+        .options(
+            selectinload(Booking.booking_progress),
+            selectinload(Booking.booking_assignments).selectinload(BookingAssignment.status),
+            # add any other relationships you access (mechanic, assignment_type etc.)
+        )
+    )
+    res = await db.execute(stmt)
+    booking = res.scalar_one_or_none()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found.")
 
@@ -1140,7 +1227,7 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
     elif assignment_type_name == "drop" and current_booking_status_name == 'completed':
         await update_booking_status(db, booking, "out for delivery")
 
-    elif assignment_type_name == "drop" and current_booking_status_name == 'cancelled'and booking.payment_method_id is not None and not await cancelled_drop_assigned(db, booking.id):
+    elif assignment_type_name == "drop" and current_booking_status_name == 'cancelled' and booking.payment_method_id is not None and not await cancelled_drop_assigned(db, booking.id):
         pass
 
     else:
@@ -1157,11 +1244,14 @@ async def assign_mechanic(db: Session, assignment_data: MechanicAssignmentCreate
         status_id=assigned_status_id
     )
     db.add(assignment)
+
+    mechanic.assigned = True
     
     await db.commit()
     await db.refresh(assignment)
     
     return assignment
+
 
 
 # Mechanic Functions
@@ -1254,7 +1344,6 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
         if sorted_assignments[0].mechanic_id != mechanic_id:
             raise HTTPException(status_code=403, detail="Trying to access other mechanic assignments.")
     
-    # Check latest progress is validated before assigning
     if booking.booking_progress:
         latest_progress = get_latest_progress(booking.booking_progress)
         if not latest_progress.validated:
@@ -1304,6 +1393,7 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
     # Update booking status based on current status
     if current_booking_status == "pickup":
         await update_booking_status(db, booking, "received")
+
     elif current_booking_status == "out for delivery":
         await update_booking_status(db, booking, "delivered")
     
@@ -1322,9 +1412,17 @@ async def create_progress_update(db: Session, progress_data: BookingProgressCrea
     if latest_assignment:
         completed_status_id = await get_status_id_by_name(db, "completed")
         latest_assignment.status_id = completed_status_id
+
+    mechanic = await db.get(Mechanic, mechanic_id)
+    mechanic.assigned = False
     
     await db.commit()
     await db.refresh(progress)
+
+    if await get_validation_automation_status():
+        if latest_assignment:
+            await db.refresh(latest_assignment)
+        await automated_progress_validation(db, progress.id, progress_data.description)
     
     return progress
 
@@ -1450,9 +1548,17 @@ async def create_analysis(db: Session, analysis_data: BookingAnalysisCreate, pay
     if latest_assignment:
         completed_status_id = await get_status_id_by_name(db, "completed")
         latest_assignment.status_id = completed_status_id
-    
+
+    mechanic = await db.get(Mechanic, mechanic_id)
+    mechanic.assigned = False
+
     await db.commit()
     await db.refresh(analysis)
+
+    if await get_analysis_validation_automation_status():
+        if latest_assignment:
+            await db.refresh(latest_assignment)
+        await automated_progress_validation(db, booking.id, analysis_data.description, analysis_data.recommendation, is_analysis=True)
     
     return analysis
 
@@ -1557,9 +1663,10 @@ async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: C
         payment_obj.status_id = await get_status_id_by_name(db, "success")
         
         await db.commit()
-        # await notification_service.send_invoice(db, booking.id)
+        await notification_service.send_invoice(db, booking.id)
         
         return JSONResponse(content={"message": "Payment received successfully"})
+
 
 
 # Admin validation functions
@@ -1646,7 +1753,8 @@ async def validate_progress(db: Session, progress_id: int):
         raise HTTPException(status_code=400, detail="Progress already validated.")
     
     mechanic = await db.get(Mechanic, progress.mechanic_id)
-  
+    
+    next_assignment = None
     if progress.status_id == await get_status_id_by_name(db, "in-progress"):
         # add score to mechanic
         booked_services = progress.booking.booked_services
@@ -1665,14 +1773,30 @@ async def validate_progress(db: Session, progress_id: int):
         confirmed_status_id = await get_status_id_by_name(db, "confirmed")
         if check_all_booked_services_completed(booked_services, confirmed_status_id):
             await update_booking_status(db, progress.booking, "completed")
+
+            # automated mechanic assignment
+            next_assignment = "drop"
+        
+        else:
+            # automated mechanic assignment
+            next_assignment = "service"
     
     elif mechanic:
         mechanic.score = (mechanic.score or 0) + 2  # difficulty 2 for pickup and drop
 
+        if progress.status_id == await get_status_id_by_name(db, "pickup"):
+            next_assignment = "analysis"
+
     progress.validated = True
-    # await notification_service.send_progress_update(db, progress.booking_id, progress)
+
+    await db.flush()
+
+    if next_assignment:
+        await automated_mechanic_assignment(db, progress.booking.id, next_assignment)
     
     await db.commit()
+
+    await notification_service.send_progress_update(db, progress.booking_id, progress)
     
     return JSONResponse(content={"message": "Progress validated and sent to customer"})
 
@@ -1751,6 +1875,8 @@ async def validate_analysis(db: Session, booking_id: int):
     return JSONResponse(content={"message": "Analysis validated and sent to customer"})
 
 
+
+# webhook handlers
 async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, signature: str):
     """
     Webhook handler for confirming payment and booking service selection.
@@ -1827,11 +1953,15 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     
     # Update booking status to 'in-progress'
     await update_booking_status(db, booking, "in-progress")
+    
+    # automated mechanic assignment
+    await automated_mechanic_assignment(db, booking.id, "service")
        
     await db.commit()
-    # await notification_service.send_invoice(db, booking.id)
+    await notification_service.send_invoice(db, booking.id)
     
     return JSONResponse(content={"message": "Payment successful."})
+
 
 async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, signature: str):
     """
@@ -1895,6 +2025,6 @@ async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, s
     payment_obj.paid_online = True
     
     await db.commit()
-    # await notification_service.send_invoice(db, payment_obj.booking_id)
+    await notification_service.send_invoice(db, payment_obj.booking_id)
     
     return JSONResponse(content={"message": "Payment received successfully"})
