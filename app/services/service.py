@@ -83,6 +83,12 @@ async def get_fuel_type_models(db: Session, fuel_ids: List[int]):
     )
     return result.scalars().all()
 
+def serialize_price_chart(price_charts: List[PriceChart]):
+    result = {}
+    for price_chart in price_charts:
+        result[price_chart.car_class_id] = float(price_chart.price)
+    return result
+
 
 # business logic
 async def create_service(db: Session, data: dict):
@@ -325,3 +331,35 @@ async def recommend_service(query: str, db: Session):
         for r in results
     ]
     return result
+
+
+async def get_services_categorized(db: Session):
+    services: List[Service] = await crud.get_all_records(db, Service)
+    category_dict = {}
+
+    for service in services:
+        service_json = {
+            'id': service.id,
+            'title': service.title,
+            'description': service.description,
+            'works': service.works,
+            'warranty_kms': service.warranty_kms,
+            'warranty_months': service.warranty_months,
+            'time_hrs': service.time_hrs,
+            'difficulty': service.difficulty,
+            'images': service.images,
+            'price_chart': serialize_price_chart(service.price_chart),
+            'fuel_types': [fuel_type.id for fuel_type in service.fuel_types],
+        }
+
+        category_id = service.category.id
+        if category_id in category_dict:
+            category_dict[category_id]['services'].append(service_json)
+        else:
+            category_dict[category_id] = {
+                'id': category_id,
+                'category_name': service.category.name,
+                'services': [service_json]
+            }
+
+    return category_dict.values()

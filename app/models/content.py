@@ -11,3 +11,4 @@ class Content(BaseModelWithObjectId):
     data: str = Field(..., description="Content data or image URL")
     updated_by: Optional[str] = Field(default=None, description="Admin id who updated")
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    

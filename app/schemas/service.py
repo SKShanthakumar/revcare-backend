@@ -117,6 +117,20 @@ class ServiceResponse(ServiceBase):
         from_attributes = True
 
 
+class ServicePage(ServiceBase):
+    """Schema for service response altered for frontend customer page"""
+    id: int = Field(..., description="Unique identifier for the service")
+    price_chart: dict = Field(..., description="Price for each car class, key - class_id: value - price")
+    fuel_types: List[int] = Field(..., description="Compatible fuel type ids")
+    
+
+class ServicePageResponse(BaseModel):
+    """Schema for service response altered for frontend customer page - with categories containing the services as field"""
+    id: int = Field(..., description="Unique identifier for the service category")
+    category_name: str = Field(..., description="Name of the service category")
+    services: List[ServicePage] = Field(..., description="List of services in the service category")
+
+
 class ServiceInBooking(BaseModel):
     """Schema for service response"""
     id: int = Field(..., description="Unique identifier for the service")

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as Session
 from typing import List, Optional
 from app.database.dependencies import get_postgres_db
 from app.models import ServiceCategory, Service, ServiceReview
-from app.schemas import ServiceCategoryCreate, ServiceCategoryResponse, ServiceCategoryUpdate, ServiceCreate, ServiceResponse, ServiceUpdateWithForeignData, ServiceReviewCreate, ServiceReviewResponse, ServiceReviewUpdate
+from app.schemas import ServiceCategoryCreate, ServiceCategoryResponse, ServiceCategoryUpdate, ServiceCreate, ServiceResponse, ServicePageResponse, ServiceUpdateWithForeignData, ServiceReviewCreate, ServiceReviewResponse, ServiceReviewUpdate
 from app.services import crud, service as car_service
 from app.auth.dependencies import validate_token
 
@@ -12,7 +12,7 @@ router = APIRouter()
 
 # category routes
 @router.get("/category", response_model=List[ServiceCategoryResponse])
-async def get_categories(db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:SERVICE_CATEGORIES"])):
+async def get_categories(db: Session = Depends(get_postgres_db)):
     """
     Get all service categories.
     
@@ -75,7 +75,7 @@ async def delete_category_by_id(id: int, db: Session = Depends(get_postgres_db),
 
 # service review routes
 @router.get("/review/{service_id}", response_model=List[ServiceReviewResponse])
-async def get_reviews_for_service(service_id: int, db: Session = Depends(get_postgres_db), payload = Security(validate_token, scopes=["READ:SERVICE_REVIEWS"])):
+async def get_reviews_for_service(service_id: int, db: Session = Depends(get_postgres_db)):
     """
     Get all reviews for a service.
     
@@ -152,6 +152,20 @@ async def service_recommendation(query: str, db: Session = Depends(get_postgres_
 
 
 # service routes
+@router.get("/categorized", response_model = List[ServicePageResponse])
+async def get_services_by_category_id(db: Session = Depends(get_postgres_db)):
+    """
+    Get all services in categorized format.
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        List[ServiceResponse]: List of services
+    """
+    return await car_service.get_services_categorized(db)
+
+
 @router.get("/", response_model=List[ServiceResponse])
 async def get_services_by_category_id(category_id: Optional[int] = None, db: Session = Depends(get_postgres_db)):
     """

@@ -9,5 +9,5 @@ class FuelType(Base):
     fuel_name = Column(VARCHAR, nullable=False)
     
     def __repr__(self):
-        return f"<FuelType(id='{self.id}', name='{self.name}')>"
+        return f"<FuelType(id='{self.id}', name='{self.fuel_name}')>"
     

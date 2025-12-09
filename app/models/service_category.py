@@ -9,6 +9,7 @@ class ServiceCategory(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(VARCHAR, nullable=False, unique=True)
     description = Column(VARCHAR, nullable=False)
+    image = Column(VARCHAR, nullable=False)
 
     # relationships
     services = relationship("Service", back_populates="category", lazy="selectin", cascade="all, delete-orphan")

@@ -22,6 +22,27 @@ async def get_content_by_content_id(db, content_id: str):
     return Content(**content)
 
 
+async def get_contents(db):
+    """
+    Fetch all content documents.
+    
+    Args:
+        db: MongoDB database session
+        
+    Returns:
+        List[Content]: List of all Content document
+        
+    """
+    contents = db.content.find()
+    return [
+        {
+            "content_id": item["content_id"],
+            "data": item["data"]
+        }
+        async for item in contents
+    ]
+
+
 async def update_content_bulk(db, updates: dict, payload: dict):
     """
     Update multiple content items by content_id.

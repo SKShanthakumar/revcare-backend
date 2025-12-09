@@ -5,6 +5,7 @@ class ServiceCategoryBase(BaseModel):
     """Base schema for Service Category"""
     name: str = Field(..., min_length=1, max_length=100, description="Name of the service category")
     description: str = Field(..., min_length=1, max_length=100, description="Description of the service category")
+    image: str = Field(..., description="URL of the service category image")
 
     @field_validator('name')
     def validate_name(cls, v: str) -> str:
@@ -24,6 +25,16 @@ class ServiceCategoryBase(BaseModel):
             raise ValueError("Service category description cannot be empty or only whitespace")
         if len(v.split()) < 2:
             raise ValueError("Service category description must be at least 2 words long")
+        return v
+    
+    @field_validator('image')
+    def validate_image(cls, v: str) -> str:
+        """Validate and normalize service category image"""
+        v = v.strip()
+        if not v:
+            raise ValueError("Service category image cannot be empty or only whitespace")
+        if len(v) < 2:
+            raise ValueError("Service category image must be at least 2 characters long")
         return v
 
 
@@ -42,6 +53,7 @@ class ServiceCategoryResponse(ServiceCategoryBase):
 class ServiceCategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100, description="Name of the service category")
     description: Optional[str] = Field(None, min_length=1, max_length=100, description="Description of the service category")
+    image: Optional[str] = Field(..., description="URL of the service category image")
 
     @field_validator('name')
     def validate_name(cls, v: str) -> str:
@@ -65,4 +77,16 @@ class ServiceCategoryUpdate(BaseModel):
             raise ValueError("Service category description cannot be empty or only whitespace")
         if len(v.split()) < 2:
             raise ValueError("Service category description must be at least 2 words long")
+        return v
+    
+    @field_validator('image')
+    def validate_image(cls, v: str) -> str:
+        """Validate and normalize service category image"""
+        if v is None:
+            return v 
+        v = v.strip()
+        if not v:
+            raise ValueError("Service category image cannot be empty or only whitespace")
+        if len(v) < 2:
+            raise ValueError("Service category image must be at least 2 characters long")
         return v
