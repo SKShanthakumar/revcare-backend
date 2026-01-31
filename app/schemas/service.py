@@ -6,6 +6,7 @@ from .service_category import ServiceCategoryResponse
 from .fuel_type import FuelTypeResponse
 from .price_chart import PriceChartCreateWithService, PriceChartResponseWithService
 
+
 class ServiceBase(BaseModel):
     """Base schema for Service"""
     title: str = Field(..., min_length=1, max_length=200, description="Name of the service")
@@ -16,27 +17,6 @@ class ServiceBase(BaseModel):
     time_hrs: Decimal = Field(..., ge=0, le=999.99, description="Expected service time in hours")
     difficulty: int = Field(..., ge=1, le=5, description="Difficulty level (1-5)")
     images: list[str] = Field(..., max_length=5, description="List of image URLs")
-
-    @field_validator('images')
-    def validate_images(cls, v: Optional[list[str]]) -> Optional[list[str]]:
-        """Validate image URLs"""
-        if v is None:
-            return v
-        
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-        
-        return v if v else None
 
     @field_validator('title')
     def validate_title(cls, v: str) -> str:
@@ -139,24 +119,6 @@ class ServiceInBooking(BaseModel):
     images: list[str] = Field(..., max_length=5, description="List of image URLs")
     category: ServiceCategoryResponse = Field(..., description="Service category details")
 
-    @field_validator('images')
-    def validate_images(cls, v:list[str]) -> list[str]:
-        """Validate image URLs"""
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-        
-        return v if v else None
-
     @field_validator('title')
     def validate_title(cls, v: str) -> str:
         """Validate and normalize service title"""
@@ -247,28 +209,7 @@ class ServiceUpdate(BaseModel):
         if v <= 0 or v > 5:
             raise ValueError("Difficulty must be in range 1-5")
         return v
-    
-    @field_validator('images')
-    def validate_images(cls, v: Optional[list[str]]) -> Optional[list[str]]:
-        """Validate image URLs"""
-        if v is None:
-            return v
-        
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-        
-        return v if v else None
-    
+     
     @field_validator('symptoms')
     def validate_symptoms(cls, v: List[str]) -> List[str]:
         """Validate symptoms"""

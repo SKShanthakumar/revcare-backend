@@ -31,27 +31,6 @@ class ServiceReviewBase(BaseModel):
             raise ValueError("Review cannot exceed 1000 characters")
         return v
     
-    @field_validator('images')
-    def validate_images(cls, v: Optional[list[str]]) -> Optional[list[str]]:
-        """Validate image URLs"""
-        if v is None:
-            return v
-        
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-        
-        return v if v else None
-
 
 class ServiceReviewCreate(ServiceReviewBase):
     """Schema for creating a new service review"""
@@ -96,25 +75,6 @@ class ServiceReviewUpdate(BaseModel):
             raise ValueError("Review cannot exceed 1000 characters")
         return v
     
-    @field_validator('images')
-    def validate_images(cls, v: Optional[list[str]]) -> Optional[list[str]]:
-        """Validate image URLs"""
-        if v is None:
-            return v
-        
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-        
-        return v if v else None
-
 
 class ServiceReviewStats(BaseModel):
     """Schema for service review statistics"""

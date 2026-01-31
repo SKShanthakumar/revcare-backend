@@ -107,53 +107,12 @@ class BookingProgressCreate(BaseModel):
     images: List[str] = Field(..., max_length=5, description="List of image URLs")
     services_completed_ids: List[int] = Field([], description="List of service IDs from booked_services that are completed")
 
-    @field_validator('images')
-    def validate_images(cls, v:list[str]) -> list[str]:
-        """Validate image URLs"""
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-        
-        if len(v) == 0:
-            raise ValueError("Atleast 1 image is required")
-
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-        
-        return v if v else None
-
+    
 class BookingProgressUpdate(BaseModel):
     description: Optional[str] = None
     images: Optional[List[str]] = None
     completed_service_ids: Optional[List[int]] = None
 
-    @field_validator('images')
-    def validate_images(cls, v: Optional[List[str]]) -> list[str] | None:
-        """Validate image URLs"""
-        # Remove empty strings and duplicates
-        if v is None:
-            return v
-        
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-
-        if len(v) == 0:
-            raise ValueError("Atleast 1 image is required")
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
 
 class BookingProgressResponse(BaseModel):
     id: int
@@ -177,54 +136,13 @@ class BookingAnalysisCreate(BaseModel):
     price_quote: Dict[int, Decimal] = Field(..., description="Dict with service_id as key and price as value")
     recommended_services: Optional[Dict[int, Decimal]] = Field(None, description="Dict with service_id as key and price as value")
 
-    @field_validator('images')
-    def validate_images(cls, v:list[str]) -> list[str]:
-        """Validate image URLs"""
-        # Remove empty strings and duplicates
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-
-        if len(v) == 0:
-            raise ValueError("Atleast 1 image is required")
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-        
-        return v if v else None
-
+    
 class BookingAnalysisUpdate(BaseModel):
     description: Optional[str] = None
     recommendation: Optional[str] = None
     images: Optional[List[str]] = None
 
-    @field_validator('images')
-    def validate_images(cls, v: Optional[List[str]]) -> list[str] | None:
-        """Validate image URLs"""
-        # Remove empty strings and duplicates
-        if v is None:
-            return v
-        
-        v = list(dict.fromkeys([url.strip() for url in v if url and url.strip()]))
-
-        if len(v) == 0:
-            raise ValueError("Atleast 1 image is required")
-        
-        if len(v) > 5:
-            raise ValueError("Maximum 5 images allowed")
-        
-        # Basic URL validation
-        for url in v:
-            if not url.startswith(('http://', 'https://', '/')):
-                raise ValueError(f"Invalid image URL: {url}")
-            if len(url) > 500:
-                raise ValueError(f"Image URL too long: {url}")
-
+    
 class BookingAnalysisResponse(BaseModel):
     booking_id: int
     mechanic_id: str

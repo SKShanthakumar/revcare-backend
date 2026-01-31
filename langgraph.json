@@ -1,0 +1,9 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "customer": "app/agents/customer/graphs/customer_graph.py:CustomerGraph"
+  },
+  "env": "../.env",
+  "image_distro": "wolfi"
+}

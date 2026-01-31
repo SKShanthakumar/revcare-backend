@@ -89,6 +89,20 @@ def serialize_price_chart(price_charts: List[PriceChart]):
         result[price_chart.car_class_id] = float(price_chart.price)
     return result
 
+def service_json(service: Service):
+    return {
+        'id': service.id,
+        'title': service.title,
+        'description': service.description,
+        'works': service.works,
+        'warranty_kms': service.warranty_kms,
+        'warranty_months': service.warranty_months,
+        'time_hrs': service.time_hrs,
+        'difficulty': service.difficulty,
+        'images': service.images,
+        'price_chart': serialize_price_chart(service.price_chart),
+        'fuel_types': [fuel_type.id for fuel_type in service.fuel_types],
+    }
 
 # business logic
 async def create_service(db: Session, data: dict):
@@ -313,22 +327,37 @@ async def recommend_service(query: str, db: Session):
     query_embedding = await recommendation.generate_embedding(query)
 
     VECTOR_DIM = 768
+    similarity = (
+        1 - func.cosine_distance(
+            Service.embedding,
+            cast(query_embedding, Vector(VECTOR_DIM))
+        )
+    )
+
     stmt = (
         select(
-            Service.id,
-            Service.title,
-            (1 - func.cosine_distance(Service.embedding, cast(query_embedding, Vector(VECTOR_DIM)))).label("score")
+            Service,
+            similarity.label("score")
         )
-        .order_by(func.cosine_distance(Service.embedding, cast(query_embedding, Vector(VECTOR_DIM))))
-        .limit(3)
+        .options(
+            selectinload(Service.fuel_types),
+            selectinload(Service.price_chart),
+        )
+        .order_by(
+            func.cosine_distance(
+                Service.embedding,
+                cast(query_embedding, Vector(VECTOR_DIM))
+            )
+        )
+        .limit(5)
     )
 
     rows = await db.execute(stmt)
     results = rows.all()
 
     result = [
-        {"id": r.id, "title": r.title, "score": float(r.score)}
-        for r in results
+        {**service_json(service), "score": round(float(score) * 100, 1)}
+        for service, score in results
     ]
     return result
 
@@ -338,19 +367,7 @@ async def get_services_categorized(db: Session):
     category_dict = {}
 
     for service in services:
-        service_json = {
-            'id': service.id,
-            'title': service.title,
-            'description': service.description,
-            'works': service.works,
-            'warranty_kms': service.warranty_kms,
-            'warranty_months': service.warranty_months,
-            'time_hrs': service.time_hrs,
-            'difficulty': service.difficulty,
-            'images': service.images,
-            'price_chart': serialize_price_chart(service.price_chart),
-            'fuel_types': [fuel_type.id for fuel_type in service.fuel_types],
-        }
+        service_json = service_json(service)
 
         category_id = service.category.id
         if category_id in category_dict:

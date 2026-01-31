@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     max_backup_age_days: int = 30
 
     groq_api_key: str
+    LANGFUSE_SECRET_KEY: str
+    LANGFUSE_PUBLIC_KEY: str
+    LANGFUSE_BASE_URL: str
 
     working_hrs: int = 9
 
