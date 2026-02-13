@@ -25,9 +25,14 @@ async def classify_intent(state: CustomerState):
     """
     user_query = state.messages[-1].content
     
-    result = await llm_call_with_structured_output([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=f"Classify the following user input: '{user_query}'")
-    ], IntentClassification)
+    try:
+        result = await llm_call_with_structured_output([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"Classify the following user input: '{user_query}'")
+        ], IntentClassification)
 
-    return result.intent
+        return result.intent
+    
+    except Exception as e:
+        # Default fallback to general chat
+        return 'general_chat'

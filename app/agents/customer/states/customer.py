@@ -6,3 +6,5 @@ from langchain.messages import AnyMessage
 
 class CustomerState(BaseModel):
     messages: Annotated[List[AnyMessage], add_messages]
+    error: bool = False
+    error_message: str = ''

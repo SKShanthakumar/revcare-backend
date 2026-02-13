@@ -24,9 +24,16 @@ async def recommend_service(query: str) -> List[Dict[str, Any]]:
 async def service_suggestion(state: CustomerState):
     """Service suggestion node with tool binding"""
     
-    tools = [recommend_service]
-    messages = [SystemMessage(content=system_prompt), *state.messages]
-    
-    response = await llm_call_with_tools(messages, tools)
-    
-    return {"messages": [response]}
+    try:
+        tools = [recommend_service]
+        messages = [SystemMessage(content=system_prompt), *state.messages]
+        
+        response = await llm_call_with_tools(messages, tools)
+        
+        return {"messages": [response]}
+
+    except Exception as e:
+        return {
+            "error": True,
+            "error_message": 'Service suggestion failed.'
+        }

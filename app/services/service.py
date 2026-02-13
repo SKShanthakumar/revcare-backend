@@ -367,16 +367,16 @@ async def get_services_categorized(db: Session):
     category_dict = {}
 
     for service in services:
-        service_json = service_json(service)
+        json = service_json(service)
 
         category_id = service.category.id
         if category_id in category_dict:
-            category_dict[category_id]['services'].append(service_json)
+            category_dict[category_id]['services'].append(json)
         else:
             category_dict[category_id] = {
                 'id': category_id,
                 'category_name': service.category.name,
-                'services': [service_json]
+                'services': [json]
             }
 
     return category_dict.values()

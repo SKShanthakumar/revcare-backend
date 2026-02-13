@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title='RevCare API', lifespan=lifespan, docs_url=None)
 
-origins = ['http://localhost:4200']
+origins = ['http://localhost:5173']
 
 # middleware registration
 app.add_middleware(
