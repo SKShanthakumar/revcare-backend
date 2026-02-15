@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, and_, desc, update, case
 from sqlalchemy.ext.asyncio import AsyncSession as Session
@@ -556,7 +556,7 @@ async def get_booking_by_id(db: Session, booking_id: int, payload: dict):
 
 
 # Customer Functions
-async def create_booking(db: Session, booking_data: BookingCreate, payload: dict):
+async def create_booking(db: Session, booking_data: BookingCreate, payload: dict, background_tasks: BackgroundTasks):
     """
     Create a new booking for a customer.
     
@@ -652,9 +652,6 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
             completed=False
         ))
     db.add_all(booked_services)
-
-    # automated mechanic assignment
-    await automated_mechanic_assignment(db, booking.id, "pickup")
     
     await db.commit()
     await db.refresh(booking)
@@ -689,7 +686,10 @@ async def create_booking(db: Session, booking_data: BookingCreate, payload: dict
         },
         "created_at": booking.created_at
     }
-    await notification_service.send_booking_confirmation(db, booking.id)
+
+    # Mechanic assignment and notification
+    background_tasks.add_task(automated_mechanic_assignment, db, booking.id, "pickup")
+    background_tasks.add_task(notification_service.send_booking_confirmation, db, booking.id)
 
     return response
 
@@ -750,7 +750,7 @@ async def get_customer_bookings(db: Session, payload: dict):
     return customer_view
 
 
-async def customer_confirm_services(db: Session, booking_id: int, selection: CustomerServiceSelection, payload: dict):
+async def customer_confirm_services(db: Session, booking_id: int, selection: CustomerServiceSelection, payload: dict, background_tasks: BackgroundTasks):
     """
     Customer confirms selected services after analysis and initiates payment.
     
@@ -882,14 +882,14 @@ async def customer_confirm_services(db: Session, booking_id: int, selection: Cus
         await update_booking_status(db, booking, "in-progress")
 
         # automated mechanic assignment
-        await automated_mechanic_assignment(db, booking.id, "service")
+        background_tasks.add_task(automated_mechanic_assignment, db, booking.id, "service")
         
         await db.commit()
         
         return JSONResponse(content={"message": "Services confirmed successfully"})
     
 
-async def cancel_booking(db: Session, booking_id: int, payload: dict):
+async def cancel_booking(db: Session, booking_id: int, payload: dict, background_tasks: BackgroundTasks):
     """
     Cancel a booking with cancellation fee calculation.
     
@@ -975,7 +975,7 @@ async def cancel_booking(db: Session, booking_id: int, payload: dict):
     await update_booking_status(db, booking, "cancelled")
 
     # automated mechanic assignment
-    await automated_mechanic_assignment(db, booking.id, "drop")
+    background_tasks.add_task(automated_mechanic_assignment, db, booking.id, "drop")
 
     await db.commit()
     
@@ -1563,7 +1563,7 @@ async def create_analysis(db: Session, analysis_data: BookingAnalysisCreate, pay
     return analysis
 
 
-async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: CashOnDelivery, payload: dict):
+async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: CashOnDelivery, payload: dict, background_tasks: BackgroundTasks):
     """
     Receive cash on delivery payment for a booking.
     
@@ -1663,7 +1663,7 @@ async def receive_cash_on_delivery(db: Session, booking_id: int, request_body: C
         payment_obj.status_id = await get_status_id_by_name(db, "success")
         
         await db.commit()
-        await notification_service.send_invoice(db, booking.id)
+        background_tasks.add_task(notification_service.send_invoice, db, booking.id)
         
         return JSONResponse(content={"message": "Payment received successfully"})
 
@@ -1720,7 +1720,7 @@ async def update_progress(db: Session, progress_id: int, update_data: BookingPro
     return progress
 
 
-async def validate_progress(db: Session, progress_id: int):
+async def validate_progress(db: Session, progress_id: int, background_tasks: BackgroundTasks):
     """
     Validate and approve a progress update.
     
@@ -1792,11 +1792,11 @@ async def validate_progress(db: Session, progress_id: int):
     await db.flush()
 
     if next_assignment:
-        await automated_mechanic_assignment(db, progress.booking.id, next_assignment)
+        background_tasks.add_task(automated_mechanic_assignment, db, progress.booking.id, next_assignment)
     
     await db.commit()
 
-    await notification_service.send_progress_update(db, progress.booking_id, progress)
+    background_tasks.add_task(notification_service.send_progress_update, db, progress.booking_id, progress)
     
     return JSONResponse(content={"message": "Progress validated and sent to customer"})
 
@@ -1877,7 +1877,7 @@ async def validate_analysis(db: Session, booking_id: int):
 
 
 # webhook handlers
-async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, signature: str):
+async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, signature: str, background_tasks: BackgroundTasks):
     """
     Webhook handler for confirming payment and booking service selection.
     
@@ -1955,15 +1955,16 @@ async def confirm_booking_webhook(db: Session, order_id: str, payment_id: str, s
     await update_booking_status(db, booking, "in-progress")
     
     # automated mechanic assignment
-    await automated_mechanic_assignment(db, booking.id, "service")
+    background_tasks.add_task(automated_mechanic_assignment, db, booking.id, "service")
        
     await db.commit()
-    await notification_service.send_invoice(db, booking.id)
+
+    background_tasks.add_task(notification_service.send_invoice, db, booking.id)
     
     return JSONResponse(content={"message": "Payment successful."})
 
 
-async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, signature: str):
+async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, signature: str, background_tasks: BackgroundTasks):
     """
     Webhook handler for confirming cash on delivery payment.
     
@@ -2025,6 +2026,7 @@ async def confirm_payment_webhook(db: Session, order_id: str, payment_id: str, s
     payment_obj.paid_online = True
     
     await db.commit()
-    await notification_service.send_invoice(db, payment_obj.booking_id)
+
+    background_tasks.add_task(notification_service.send_invoice, db, payment_obj.booking_id)
     
     return JSONResponse(content={"message": "Payment received successfully"})

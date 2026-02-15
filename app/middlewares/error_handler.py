@@ -54,6 +54,6 @@ def register_exception_handlers(app: FastAPI):
 
         except Exception as exc:
             logger.error(f"Unhandled error: {exc}")
-            logger.error(traceback.format_exc())
+            # logger.error(traceback.format_exc())
 
             return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred. Please try again later."})

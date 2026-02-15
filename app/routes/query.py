@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, Security, status
+from fastapi import APIRouter, Depends, Security, status, BackgroundTasks
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.auth.dependencies import validate_token
@@ -35,6 +35,7 @@ async def create_query(
 async def respond_to_query(
     query_id: str,
     payload: QueryResponse,
+    background_tasks: BackgroundTasks,
     user_payload: dict = Security(validate_token, scopes=["UPDATE:QUERIES"]),
     db: AsyncIOMotorDatabase = Depends(get_mongo_db),
     pg_db: Session = Depends(get_postgres_db)
@@ -52,7 +53,7 @@ async def respond_to_query(
     Returns:
         Query: Updated query with response
     """
-    return await respond_to_query_service(db, pg_db, query_id, payload, user_payload)
+    return await respond_to_query_service(db, pg_db, query_id, payload, user_payload, background_tasks)
 
 
 # Get all queries - by admin

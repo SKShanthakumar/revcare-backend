@@ -1,6 +1,6 @@
 from datetime import datetime
 from bson import ObjectId
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from app.models import Query
@@ -29,7 +29,8 @@ async def respond_to_query_service(
     pg_db: Session,
     query_id: str,
     data: QueryResponse,
-    user_payload: dict
+    user_payload: dict,
+    background_tasks: BackgroundTasks
 ) -> Query:
     """
     Respond to a customer query (admin only).
@@ -54,7 +55,7 @@ async def respond_to_query_service(
     if not ObjectId.is_valid(query_id):
         raise HTTPException(status_code=400, detail="Invalid query ID")
 
-    result = await db.queries.update_one(
+    updated = await db.queries.find_one_and_update(
         {"_id": ObjectId(query_id)},
         {
             "$set": {
@@ -65,12 +66,10 @@ async def respond_to_query_service(
         },
     )
 
-    if result.matched_count == 0:
+    if not updated:
         raise HTTPException(status_code=404, detail="Query not found")
     
-
-    updated = await db.queries.find_one({"_id": ObjectId(query_id)})
-    await notification_service.send_query_response(pg_db, updated.get('customer_email'), updated.get('query'), updated.get('response'))
+    background_tasks.add_task(notification_service.send_query_response, pg_db, updated.get('customer_email'), updated.get('query'), updated.get('response'))
 
     return updated
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Security, HTTPException
+from fastapi import APIRouter, Depends, Security, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from typing import List, Optional
@@ -8,7 +8,7 @@ from app.schemas import (
     MechanicAssignmentResponse, BookingProgressCreate, BookingProgressUpdate,
     BookingProgressResponse, BookingAnalysisCreate, BookingAnalysisUpdate,
     BookingAnalysisResponse, CustomerServiceSelection,
-    BookedServiceResponse, AdminBookingDashboard, CustomerBookingView, BookingResponseDetailed,
+    AdminBookingDashboard, CustomerBookingView, BookingResponseDetailed,
     MechanicAssignmentDetailedResponse
 )
 from app.services import bookings as booking_service
@@ -20,6 +20,7 @@ router = APIRouter()
 @router.post("/", response_model=BookingResponse)
 async def create_booking(
     booking: BookingCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_postgres_db),
     payload = Security(validate_token, scopes=["WRITE:BOOKINGS"])
 ):
@@ -34,7 +35,7 @@ async def create_booking(
     Returns:
         BookingResponse: Created booking information
     """
-    return await booking_service.create_booking(db, booking, payload)
+    return await booking_service.create_booking(db, booking, payload, background_tasks)
 
 
 @router.get("/customer", response_model=List[CustomerBookingView])
@@ -59,6 +60,7 @@ async def get_customer_bookings(
 async def confirm_services(
     booking_id: int,
     selection: CustomerServiceSelection,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_postgres_db),
     payload = Security(validate_token, scopes=["UPDATE:BOOKINGS"])
 ):
@@ -74,12 +76,13 @@ async def confirm_services(
     Returns:
         JSONResponse: Payment order details or success message
     """
-    return await booking_service.customer_confirm_services(db, booking_id, selection, payload)
+    return await booking_service.customer_confirm_services(db, booking_id, selection, payload, background_tasks)
 
 
 @router.put("/{booking_id}/cancel", response_class=JSONResponse)
 async def cancel_booking(
     booking_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_postgres_db),
     payload = Security(validate_token, scopes=["UPDATE:BOOKINGS"])
 ):
@@ -94,7 +97,7 @@ async def cancel_booking(
     Returns:
         JSONResponse: Success message with cancellation fee
     """
-    return await booking_service.cancel_booking(db, booking_id, payload)
+    return await booking_service.cancel_booking(db, booking_id, payload, background_tasks)
 
 
 # Admin Endpoints
@@ -165,6 +168,7 @@ async def update_progress(
 @router.post("/admin/progress/{progress_id}/validate", response_class=JSONResponse)
 async def validate_progress(
     progress_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_postgres_db),
     payload = Security(validate_token, scopes=["UPDATE:BOOKING_PROGRESS"])
 ):
@@ -179,7 +183,7 @@ async def validate_progress(
     Returns:
         JSONResponse: Success message
     """
-    return await booking_service.validate_progress(db, progress_id)
+    return await booking_service.validate_progress(db, progress_id, background_tasks)
 
 
 @router.put("/admin/analysis/{booking_id}", response_model=BookingAnalysisResponse)
